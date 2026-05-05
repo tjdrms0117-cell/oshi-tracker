@@ -46,12 +46,8 @@ export default function ConcertDetail({ session }) {
     }
   }
 
-  if (!session?.user) {
-      alert('로그인 후 이용할 수 있어요')
-      return
-    }
-    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
   const handleToggleOshi = async () => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
     if (oshiLoading) return
     setOshiLoading(true)
     try {
@@ -68,12 +64,8 @@ export default function ConcertDetail({ session }) {
     }
   }
 
-  if (!session?.user) {
-      alert('로그인 후 이용할 수 있어요')
-      return
-    }
-    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
   const handleToggleAttending = async () => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
     if (attendingLoading) return
     setAttendingLoading(true)
     try {
