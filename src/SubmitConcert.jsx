@@ -42,6 +42,10 @@ export default function SubmitConcert({ session }) {
   }
   
   const startNew = () => {
+    if (!session?.user) {
+      alert('제보는 로그인 후 이용할 수 있어요')
+      return
+    }
     // 초기화
     setArtistData(null)
    setConcertData({ 
