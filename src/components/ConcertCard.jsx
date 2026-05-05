@@ -268,6 +268,17 @@ export default function ConcertCard({
                       {nextRound.method && ` · ${methodLabel[nextRound.method]}`}
                       {nextRound.ticket_site && ` · ${nextRound.ticket_site}`}
                     </div>
+                    {nextRound.ticket_url && (
+                      <a
+                        href={nextRound.ticket_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-bold text-pink-600 hover:underline"
+                      >
+                        🎟️ 티켓 예매하기
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

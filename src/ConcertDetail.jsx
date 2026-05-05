@@ -292,6 +292,17 @@ export default function ConcertDetail({ session }) {
                       {round.note && (
                         <div className="italic text-zinc-500">📝 {round.note}</div>
                       )}
+                      {round.ticket_url && (
+                        <a
+                          href={round.ticket_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-pink-600 hover:underline"
+                        >
+                          🎟️ 티켓 예매하기
+                        </a>
+                      )}
                     </div>
                   </div>
                 )
