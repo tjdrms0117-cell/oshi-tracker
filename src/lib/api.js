@@ -457,7 +457,7 @@ export async function fetchConcertById(concertId) {
       *,
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(*)
+      ticket_rounds(id, concert_id, round_name, open_at, method, ticket_site, price_info, note, display_order, ticket_url)
     `)
     .eq('id', concertId)
     .single()
