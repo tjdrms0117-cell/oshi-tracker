@@ -40,36 +40,6 @@ export default function Header({ profile, session, mode, onModeChange, theme, on
 
         {/* 우측 액션 영역 */}
         <div className="flex items-center gap-1.5">
-          {/* 테마 토글 */}
-          <div className="flex p-0.5 rounded-full bg-stone-100 dark:bg-zinc-800">
-            <button
-              onClick={() => handleTheme('light')}
-              className={`p-1.5 rounded-full transition ${
-                theme === 'light' ? 'bg-white dark:bg-zinc-700 text-amber-500 shadow-sm' : 'text-zinc-400'
-              }`}
-              title="라이트"
-            >
-              <Sun className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => handleTheme('dark')}
-              className={`p-1.5 rounded-full transition ${
-                theme === 'dark' ? 'bg-white dark:bg-zinc-700 text-indigo-500 shadow-sm' : 'text-zinc-400'
-              }`}
-              title="다크"
-            >
-              <Moon className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => handleTheme('system')}
-              className={`p-1.5 rounded-full transition ${
-                theme === 'system' ? 'bg-white dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200 shadow-sm' : 'text-zinc-400'
-              }`}
-              title="시스템"
-            >
-              <Monitor className="w-3 h-3" />
-            </button>
-          </div>
 
           {/* USER/ADMIN 토글 (관리자만) */}
           {isAdmin && (
