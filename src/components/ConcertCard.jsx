@@ -321,9 +321,11 @@ export default function ConcertCard({
                       </div>
                       <div className="text-[10px] mt-0.5">
                         {round.open_at ? new Date(round.open_at).toLocaleString('ko', { 
-                          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                          
+                          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
                         }) : ''}
+                        {round.close_at && ` ~ ${new Date(round.close_at).toLocaleString('ko', {
+                          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        })}`}
                         {round.method && ` · ${methodLabel[round.method]}`}
                         {round.ticket_site && ` · ${round.ticket_site}`}
                       </div>
