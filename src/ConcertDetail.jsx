@@ -276,7 +276,7 @@ export default function ConcertDetail({ session }) {
                             weekday: 'short',
                             hour: '2-digit', 
                             minute: '2-digit',
-                            timeZone: 'Asia/Seoul'
+                            
                           })}
                         </div>
                       )}

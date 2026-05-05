@@ -263,7 +263,7 @@ export default function ConcertCard({
                     <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
                       {nextRound.open_at ? new Date(nextRound.open_at).toLocaleString('ko', { 
                         month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                        timeZone: 'Asia/Seoul'
+                        
                       }) : ''}
                       {nextRound.method && ` · ${methodLabel[nextRound.method]}`}
                       {nextRound.ticket_site && ` · ${nextRound.ticket_site}`}
@@ -311,7 +311,7 @@ export default function ConcertCard({
                       <div className="text-[10px] mt-0.5">
                         {round.open_at ? new Date(round.open_at).toLocaleString('ko', { 
                           month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                          timeZone: 'Asia/Seoul'
+                          
                         }) : ''}
                         {round.method && ` · ${methodLabel[round.method]}`}
                         {round.ticket_site && ` · ${round.ticket_site}`}
