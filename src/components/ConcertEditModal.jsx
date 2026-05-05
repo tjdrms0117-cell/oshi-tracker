@@ -272,6 +272,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
                     </div>
                     <Input label="" value={round.price_info} onChange={v => updateRound(idx, 'price_info', v)} placeholder="가격 정보" />
                     <Input label="" value={round.note} onChange={v => updateRound(idx, 'note', v)} placeholder="메모" />
+                    <Input label="" value={round.ticket_url} onChange={v => updateRound(idx, 'ticket_url', v)} placeholder="티켓 링크 URL" />
                   </div>
                 </div>
               ))}
