@@ -44,9 +44,10 @@ export default function ConcertCard({
   
   // 티켓팅 분석
   const now = new Date()
-  const upcomingRounds = ticketRounds.filter(r => new Date(r.open_at) > now)
-  const pastRounds = ticketRounds.filter(r => new Date(r.open_at) <= now)
-  const nextRound = upcomingRounds[0]
+  const upcomingRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) > now)
+  const pastRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) <= now)
+  const pendingRounds = ticketRounds.filter(r => !r.open_at)
+  const nextRound = upcomingRounds[0] || pendingRounds[0]
   
   const getCountdown = (openAt) => {
     if (!openAt) return '공개전'
@@ -256,7 +257,7 @@ export default function ConcertCard({
                           ? 'bg-pink-100 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300'
                           : 'bg-stone-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
                       }`}>
-                        {getCountdown(nextRound.open_at)}
+                        {nextRound.open_at ? getCountdown(nextRound.open_at) : '공개전'}
                       </span>
                     </div>
                     <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
