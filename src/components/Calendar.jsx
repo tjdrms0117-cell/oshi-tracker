@@ -18,7 +18,10 @@ export default function Calendar({
   const filteredConcerts = useMemo(() => {
     if (filter === 'korea') return concerts.filter(c => c.country === 'korea')
     if (filter === 'japan') return concerts.filter(c => c.country === 'japan')
-    return concerts.filter(c => attendingConcertIds.includes(c.id))
+    return concerts.filter(c =>
+  attendingConcertIds.includes(c.id) ||
+  (c.is_series && c.series_dates?.some(d => attendingConcertIds.includes(d.id)))
+)
   }, [concerts, filter, attendingConcertIds])
   
   const isMine = (concert) => attendingConcertIds.includes(concert.id)
@@ -33,12 +36,19 @@ export default function Calendar({
     const events = {}
     
     filteredConcerts.forEach(c => {
-      const liveDate = new Date(c.date)
-      if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
-        const day = liveDate.getDate()
-        if (!events[day]) events[day] = { live: [], tickets: [] }
-        events[day].live.push(c)
-      }
+  // 양일공연은 series_dates의 각 날짜에 찍기
+  const dates = (c.is_series && c.series_dates?.length > 0)
+    ? c.series_dates
+    : [{ date: c.date }]
+
+  dates.forEach(d => {
+    const liveDate = new Date(d.date)
+    if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
+      const day = liveDate.getDate()
+      if (!events[day]) events[day] = { live: [], tickets: [] }
+      events[day].live.push(c)
+    }
+  })
       
       ;(c.ticket_rounds || []).forEach(round => {
         if (!round.open_at) return
