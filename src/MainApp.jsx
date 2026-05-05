@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { getProfile } from './lib/auth'
 import { 
   fetchConcerts, 
@@ -29,7 +30,8 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
   const [mode, setMode] = useState('user')
   const [country, setCountry] = useState('korea')
-  const [activeTab, setActiveTab] = useState('concerts')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'concerts')
   const [subFilter, setSubFilter] = useState('all')
   
   const [concerts, setConcerts] = useState([])
