@@ -96,7 +96,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       
       // 2. 티켓팅 라운드 교체
       const validRounds = editedRounds
-        .filter(r => r.round_name)
+        .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
         .map(r => ({ ...r, open_at: r.open_at || null }))
       await replaceTicketRounds(concertId, validRounds)
       

@@ -915,25 +915,7 @@ export async function fetchConcertSeries(seriesId) {
 
 // 티켓팅 라운드 수정
 export async function replaceTicketRounds(concertId, rounds) {
-  // series_id 확인해서 관련된 모든 concert의 티켓팅 삭제
-  const { data: concert } = await supabase
-    .from('concerts')
-    .select('series_id')
-    .eq('id', concertId)
-    .single()
-
-  if (concert?.series_id) {
-    // 양일공연: series 전체 concert_id 가져와서 삭제
-    const { data: siblings } = await supabase
-      .from('concerts')
-      .select('id')
-      .eq('series_id', concert.series_id)
-    
-    const ids = siblings.map(s => s.id)
-    await supabase.from('ticket_rounds').delete().in('concert_id', ids)
-  } else {
-    await supabase.from('ticket_rounds').delete().eq('concert_id', concertId)
-  }
+  await supabase.from('ticket_rounds').delete().eq('concert_id', concertId)
   
   if (rounds && rounds.length > 0) {
     const payload = rounds.map((r, idx) => ({
