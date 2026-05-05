@@ -161,7 +161,15 @@ export default function VenueDetail({ session }) {
                       {concert.title}
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">
-                      {concert.date}{concert.time && ` · ${concert.time.slice(0,5)}`}
+                      {concert.is_series && concert.series_dates
+                        ? concert.series_dates.map((d, i) => (
+                            <span key={d.id}>
+                              {i > 0 && ' · '}
+                              {d.date}{d.time && ` ${d.time.slice(0,5)}`}
+                            </span>
+                          ))
+                        : `${concert.date}${concert.time ? ` · ${concert.time.slice(0,5)}` : ''}`
+                      }
                     </div>
                   </div>
                   <div className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-pink-50 text-pink-600 ml-3 flex-shrink-0">
