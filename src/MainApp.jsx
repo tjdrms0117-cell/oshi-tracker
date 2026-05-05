@@ -31,7 +31,12 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [mode, setMode] = useState('user')
   const [country, setCountry] = useState('korea')
   const [searchParams, setSearchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'concerts')
+  const initialTab = searchParams.get('tab')
+  const [activeTab, setActiveTab] = useState(
+    ['concerts', 'calendar', 'artists', 'venues', 'submit', 'review'].includes(initialTab)
+      ? initialTab
+      : 'concerts'
+  )
   const [subFilter, setSubFilter] = useState('all')
   
   const [concerts, setConcerts] = useState([])
