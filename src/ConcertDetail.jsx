@@ -28,15 +28,17 @@ export default function ConcertDetail({ session }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [concertData, oshiList, attendingList] = await Promise.all([
-        fetchConcertById(id),
-        fetchMyOshiList(session.user.id).catch(() => []),
-        fetchMyAttendingList(session.user.id).catch(() => []),
-      ])
-      
+      const concertData = await fetchConcertById(id)
       setConcert(concertData)
-      setIsOshi(oshiList.some(o => o.artist_id === concertData.artist_id))
-      setIsAttending(attendingList.some(a => a.concert_id === concertData.id))
+
+      if (session?.user) {
+        const [oshiList, attendingList] = await Promise.all([
+          fetchMyOshiList(session.user.id).catch(() => []),
+          fetchMyAttendingList(session.user.id).catch(() => []),
+        ])
+        setIsOshi(oshiList.some(o => o.artist_id === concertData.artist_id))
+        setIsAttending(attendingList.some(a => a.concert_id === concertData.id))
+      }
     } catch (err) {
       console.error('공연 로드 실패:', err)
     } finally {
@@ -48,6 +50,7 @@ export default function ConcertDetail({ session }) {
       alert('로그인 후 이용할 수 있어요')
       return
     }
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
   const handleToggleOshi = async () => {
     if (oshiLoading) return
     setOshiLoading(true)
@@ -69,6 +72,7 @@ export default function ConcertDetail({ session }) {
       alert('로그인 후 이용할 수 있어요')
       return
     }
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
   const handleToggleAttending = async () => {
     if (attendingLoading) return
     setAttendingLoading(true)
