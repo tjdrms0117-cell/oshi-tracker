@@ -261,9 +261,9 @@ export default function ConcertCard({
                       </span>
                     </div>
                     <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
-                      {new Date(nextRound.open_at).toLocaleString('ko', { 
+                      {nextRound.open_at ? new Date(nextRound.open_at).toLocaleString('ko', { 
                         month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-                      })}
+                      }) : ''}
                       {nextRound.method && ` · ${methodLabel[nextRound.method]}`}
                       {nextRound.ticket_site && ` · ${nextRound.ticket_site}`}
                     </div>
