@@ -51,6 +51,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         price_info: r.price_info || '',
         note: r.note || '',
         ticket_url: r.ticket_url || '',
+        close_at: r.close_at ? new Date(r.close_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
       })))
       
       // venue 정보
@@ -256,7 +257,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
                   </button>
                   <div className="space-y-1.5 pr-6">
                     <Input label="라운드 이름" value={round.round_name} onChange={v => updateRound(idx, 'round_name', v)} />
-                    <Input label="오픈 일시" type="datetime-local" value={round.open_at} onChange={v => updateRound(idx, 'open_at', v)} />
+                    <Input label="접수 시작" type="datetime-local" value={round.open_at} onChange={v => updateRound(idx, 'open_at', v)} />
+                    <Input label="접수 마감 (선택)" type="datetime-local" value={round.close_at || ''} onChange={v => updateRound(idx, 'close_at', v)} />
                     <div className="grid grid-cols-2 gap-1.5">
                       <select
                         value={round.method}
