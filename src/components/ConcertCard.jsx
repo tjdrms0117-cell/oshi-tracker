@@ -49,6 +49,7 @@ export default function ConcertCard({
   const nextRound = upcomingRounds[0]
   
   const getCountdown = (openAt) => {
+    if (!openAt) return '공개전'
     const open = new Date(openAt)
     const diff = open - now
     if (diff < 0) return '오픈됨'
