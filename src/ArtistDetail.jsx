@@ -31,16 +31,21 @@ export default function ArtistDetail({ session }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [artistData, concertsData, oshi, attending] = await Promise.all([
+      const [artistData, concertsData] = await Promise.all([
         fetchArtistById(id),
         fetchConcertsByArtist(id),
-        fetchMyOshiList(session.user.id).catch(() => []),
-        fetchMyAttendingList(session.user.id).catch(() => []),
       ])
       setArtist(artistData)
       setConcerts(concertsData)
-      setOshiList(oshi)
-      setAttendingList(attending)
+
+      if (session?.user) {
+        const [oshi, attending] = await Promise.all([
+          fetchMyOshiList(session.user.id).catch(() => []),
+          fetchMyAttendingList(session.user.id).catch(() => []),
+        ])
+        setOshiList(oshi)
+        setAttendingList(attending)
+      }
     } catch (err) {
       console.error('가수 정보 로드 실패:', err)
     } finally {
@@ -49,6 +54,7 @@ export default function ArtistDetail({ session }) {
   }
   
   const handleToggleOshi = async () => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
     if (oshiLoading || !artist) return
     setOshiLoading(true)
     try {
@@ -82,6 +88,7 @@ export default function ArtistDetail({ session }) {
   }
   
   const handleToggleAttending = async (concertId, currentlyAttending) => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
     try {
       if (currentlyAttending) {
         await removeFromAttending(session.user.id, concertId)
