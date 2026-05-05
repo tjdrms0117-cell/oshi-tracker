@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Train, Car, Lightbulb, Users, ExternalLink, Calendar } from 'lucide-react'
 import { fetchVenueById, fetchConcertsByVenue } from './lib/api'
-import ConcertCard from './components/ConcertCard'
 
 export default function VenueDetail({ session }) {
   const { id } = useParams()
@@ -53,8 +52,13 @@ export default function VenueDetail({ session }) {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const upcomingConcerts = concerts.filter(c => new Date(c.date) >= today)
-  const pastConcerts = concerts.filter(c => new Date(c.date) < today)
+  const upcomingConcerts = concerts
+    .filter(c => new Date(c.date) >= today)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+  const pastConcerts = concerts
+    .filter(c => new Date(c.date) < today)
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+  const [showPast, setShowPast] = useState(false)
 
   const naverMapUrl = venue.address
     ? `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
@@ -64,7 +68,7 @@ export default function VenueDetail({ session }) {
     <div className="min-h-screen bg-stone-50">
       <div className="relative pb-8" style={{ background: 'linear-gradient(180deg, #06b6d410 0%, transparent 100%)' }}>
         <div className="px-5 pt-5 pb-3">
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900 transition">
+         <button onClick={() => navigate('/?tab=venues')} className="flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900 transition">
             <ArrowLeft className="w-4 h-4" />
             뒤로
           </button>
@@ -128,39 +132,82 @@ export default function VenueDetail({ session }) {
           </div>
         </section>
 
+        {concerts.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-5xl mb-4 opacity-20">🏟️</div>
+            <p className="text-sm text-zinc-500">아직 등록된 공연이 없어요</p>
+          </div>
+        )}
+
         {upcomingConcerts.length > 0 && (
-          <section>
-            <h2 className="text-sm font-bold text-zinc-900 mb-3 flex items-center gap-2 px-1">
+          <section className="rounded-2xl bg-white border border-stone-200 p-5">
+            <h2 className="text-sm font-bold text-zinc-900 mb-3 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-pink-500" />
               예정 공연 ({upcomingConcerts.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-2">
               {upcomingConcerts.map(concert => (
-                <ConcertCard key={concert.id} concert={concert} />
+                <div
+                  key={concert.id}
+                  onClick={() => navigate(`/concerts/${concert.id}`)}
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 cursor-pointer transition"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-pink-500 mb-0.5">
+                      {concert.artist?.name}
+                    </div>
+                    <div className="text-sm font-semibold text-zinc-900 truncate">
+                      {concert.title}
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-0.5">
+                      {concert.date}{concert.time && ` · ${concert.time.slice(0,5)}`}
+                    </div>
+                  </div>
+                  <div className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-pink-50 text-pink-600 ml-3 flex-shrink-0">
+                    D-{Math.round((new Date(concert.date) - today) / (1000*60*60*24))}
+                  </div>
+                </div>
               ))}
             </div>
           </section>
         )}
 
         {pastConcerts.length > 0 && (
-          <section>
-            <h2 className="text-sm font-bold text-zinc-500 mb-3 flex items-center gap-2 px-1">
-              <Calendar className="w-4 h-4" />
-              지난 공연 ({pastConcerts.length})
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">
-              {pastConcerts.map(concert => (
-                <ConcertCard key={concert.id} concert={concert} />
-              ))}
-            </div>
+          <section className="rounded-2xl bg-white border border-stone-200 p-5">
+            <button
+              onClick={() => setShowPast(!showPast)}
+              className="w-full flex items-center justify-between text-sm font-bold text-zinc-500"
+            >
+              <span className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                지난 공연 ({pastConcerts.length})
+              </span>
+              <span>{showPast ? '▲' : '▼'}</span>
+            </button>
+            {showPast && (
+              <div className="space-y-2 mt-3">
+                {pastConcerts.map(concert => (
+                  <div
+                    key={concert.id}
+                    onClick={() => navigate(`/concerts/${concert.id}`)}
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-stone-50 cursor-pointer transition opacity-60"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-zinc-400 mb-0.5">
+                        {concert.artist?.name}
+                      </div>
+                      <div className="text-sm font-semibold text-zinc-700 truncate">
+                        {concert.title}
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5">
+                        {concert.date}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
-        )}
-
-        {concerts.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-5xl mb-4 opacity-20">🏟️</div>
-            <p className="text-sm text-zinc-500">아직 등록된 공연이 없어요</p>
-          </div>
         )}
       </div>
     </div>
