@@ -160,7 +160,17 @@ const loadAllData = async () => {
       alert('처리 중 오류가 발생했어요')
     }
   }
-
+const handleToggleAttendingDays = async (toAdd, toRemove) => {
+  if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
+  try {
+    for (const concertId of toAdd) await addToAttending(session.user.id, concertId)
+    for (const concertId of toRemove) await removeFromAttending(session.user.id, concertId)
+    const newAttending = await fetchMyAttendingList(session.user.id)
+    setAttendingList(newAttending)
+  } catch (err) {
+    alert('처리 중 오류가 발생했어요')
+  }
+}
   const isAdmin = profile?.is_admin === true
   
   // ID 배열로 변환
@@ -308,6 +318,7 @@ const loadAllData = async () => {
                 attendingConcertIds={attendingConcertIds}
                 isAdmin={mode === 'admin' && isAdmin}
                 onToggleAttending={handleToggleAttending}
+                onToggleAttendingDays={handleToggleAttendingDays}
                 onEdit={handleEditConcert}
                 onDelete={handleDeleteConcert}
                 emptyMessage={
