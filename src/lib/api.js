@@ -530,7 +530,39 @@ export async function fetchConcertsByVenue(venueId) {
     .order('date', { ascending: true })
   
   if (error) throw error
-  return data || []
+
+  // series 묶기 (fetchConcerts와 동일 로직)
+  const seriesMap = new Map()
+  const standalone = []
+
+  ;(data || []).forEach(c => {
+    if (c.series_id) {
+      if (!seriesMap.has(c.series_id)) seriesMap.set(c.series_id, [])
+      seriesMap.get(c.series_id).push(c)
+    } else {
+      standalone.push(c)
+    }
+  })
+
+  const seriesGrouped = []
+  seriesMap.forEach(concerts => {
+    const sorted = concerts.sort((a, b) => new Date(a.date) - new Date(b.date))
+    const first = sorted[0]
+    seriesGrouped.push({
+      ...first,
+      is_series: true,
+      series_dates: sorted.map(c => ({
+        id: c.id,
+        date: c.date,
+        time: c.time,
+        day_label: c.day_label,
+      })),
+    })
+  })
+
+  const all = [...standalone, ...seriesGrouped]
+  all.sort((a, b) => new Date(a.date) - new Date(b.date))
+  return all
 }
 // ============================================
 // 가수별 공연 개수 가져오기
