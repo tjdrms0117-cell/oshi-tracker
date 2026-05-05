@@ -275,9 +275,14 @@ export default function ConcertDetail({ session }) {
                             day: 'numeric',
                             weekday: 'short',
                             hour: '2-digit', 
-                            minute: '2-digit',
-                            
+                            minute: '2-digit'
                           })}
+                          {round.close_at && ` ~ ${new Date(round.close_at).toLocaleString('ko', {
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}`}
                         </div>
                       )}
                       {round.method && (
