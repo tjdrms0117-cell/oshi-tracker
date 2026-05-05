@@ -194,7 +194,10 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
     
     switch (subFilter) {
       case 'attending':
-        filtered = filtered.filter(c => attendingConcertIds.includes(c.id))
+  filtered = filtered.filter(c =>
+    attendingConcertIds.includes(c.id) ||
+    (c.is_series && c.series_dates?.some(d => attendingConcertIds.includes(d.id)))
+  )
         filtered = filtered.filter(c => new Date(c.date) >= today)
         break
       case 'oshi':
@@ -220,10 +223,11 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
   // 서브 필터 카운트
   const subFilterCounts = {
     attending: concerts.filter(c => 
-      c.country === country && 
-      attendingConcertIds.includes(c.id) && 
-      new Date(c.date) >= today
-    ).length,
+  c.country === country && 
+  (attendingConcertIds.includes(c.id) ||
+    (c.is_series && c.series_dates?.some(d => attendingConcertIds.includes(d.id)))) &&
+  new Date(c.date) >= today
+).length,
     oshi: concerts.filter(c => 
       c.country === country && 
       oshiArtistIds.includes(c.artist_id) && 
