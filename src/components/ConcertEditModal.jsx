@@ -41,13 +41,17 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: c.memo || '',
         source_url: c.source_url || '',
       })
-      setEditedRounds((c.ticket_rounds || []).map(r => ({
+      // 양일공연은 DAY1 concert_id에 속한 티켓팅만 가져오기
+      const ownRounds = (c.ticket_rounds || []).filter(r => r.concert_id === concertId)
+      setEditedRounds(ownRounds.map(r => ({
+        id: r.id,
         round_name: r.round_name,
         open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
         method: r.method || '',
         ticket_site: r.ticket_site || '',
         price_info: r.price_info || '',
         note: r.note || '',
+        ticket_url: r.ticket_url || '',
       })))
       
       // venue 정보
