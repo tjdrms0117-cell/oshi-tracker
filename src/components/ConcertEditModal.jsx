@@ -43,6 +43,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       })
       setEditedRounds((c.ticket_rounds || []).map(r => ({
         id: r.id,
+        concert_id: r.concert_id,
         round_name: r.round_name,
         open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
         method: r.method || '',
@@ -95,7 +96,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       
       // 2. 티켓팅 라운드 교체
       const validRounds = editedRounds
-        .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
+        .filter(r => r.round_name)
         .map(r => ({ ...r, open_at: r.open_at || null }))
       await replaceTicketRounds(concertId, validRounds)
       

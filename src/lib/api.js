@@ -915,11 +915,13 @@ export async function fetchConcertSeries(seriesId) {
 
 // 티켓팅 라운드 수정
 export async function replaceTicketRounds(concertId, rounds) {
+  // 이 concert_id에 속한 티켓팅만 삭제
   await supabase.from('ticket_rounds').delete().eq('concert_id', concertId)
   
   if (rounds && rounds.length > 0) {
     const payload = rounds.map((r, idx) => ({
-      concert_id: concertId,
+      // concert_id가 있으면 원래 것 유지, 없으면 현재 concertId 사용
+      concert_id: r.concert_id || concertId,
       round_name: r.round_name,
       open_at: r.open_at || null,
       close_at: r.close_at || null,
@@ -927,6 +929,7 @@ export async function replaceTicketRounds(concertId, rounds) {
       ticket_site: r.ticket_site || null,
       price_info: r.price_info || null,
       note: r.note || null,
+      ticket_url: r.ticket_url || null,
       display_order: idx + 1,
     }))
     
