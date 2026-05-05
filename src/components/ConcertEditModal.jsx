@@ -43,7 +43,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       })
       setEditedRounds((c.ticket_rounds || []).map(r => ({
         round_name: r.round_name,
-        open_at: r.open_at?.slice(0, 16) || '',
+        open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
         method: r.method || '',
         ticket_site: r.ticket_site || '',
         price_info: r.price_info || '',
