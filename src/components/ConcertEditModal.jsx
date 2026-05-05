@@ -41,9 +41,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: c.memo || '',
         source_url: c.source_url || '',
       })
-      // 양일공연은 DAY1 concert_id에 속한 티켓팅만 가져오기
-      const ownRounds = (c.ticket_rounds || []).filter(r => r.concert_id === concertId)
-      setEditedRounds(ownRounds.map(r => ({
+      setEditedRounds((c.ticket_rounds || []).map(r => ({
         id: r.id,
         round_name: r.round_name,
         open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
@@ -97,11 +95,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       
       // 2. 티켓팅 라운드 교체
       const validRounds = editedRounds
-        .filter(r => r.round_name)
-        .map(r => ({
-          ...r,
-          open_at: r.open_at ? r.open_at.replace('T', ' ') + ':00+09:00' : null
-        }))
+        .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
+        .map(r => ({ ...r, open_at: r.open_at || null }))
       await replaceTicketRounds(concertId, validRounds)
       
       // 3. venue 정보 업데이트 (있으면)
