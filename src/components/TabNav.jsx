@@ -8,7 +8,7 @@ export default function TabNav({ tabs, activeTab, onTabChange }) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex-1 py-2 px-3 rounded-full text-sm font-semibold transition relative ${
+              className={`flex-1 py-1.5 px-2 rounded-full text-xs md:text-sm font-semibold transition relative ${
                 isActive
                   ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
                   : 'text-zinc-500 dark:text-zinc-400'
