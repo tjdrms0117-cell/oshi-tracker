@@ -30,7 +30,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
   const [mode, setMode] = useState('user')
   const [country, setCountry] = useState('korea')
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'concerts')
   const [subFilter, setSubFilter] = useState('all')
   
@@ -283,7 +283,10 @@ const loadAllData = async () => {
         <TabNav
           tabs={tabs}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => {
+            setActiveTab(tab)
+            setSearchParams({})
+          }}
         />
 
         <main className="px-5">
