@@ -50,6 +50,8 @@ export default function VenueDetail({ session }) {
     )
   }
 
+  const [showPast, setShowPast] = useState(false)
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const upcomingConcerts = concerts
@@ -58,7 +60,6 @@ export default function VenueDetail({ session }) {
   const pastConcerts = concerts
     .filter(c => new Date(c.date) < today)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-  const [showPast, setShowPast] = useState(false)
 
   const naverMapUrl = venue.address
     ? `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
