@@ -10,6 +10,7 @@ export default function VenueDetail({ session }) {
   const [venue, setVenue] = useState(null)
   const [concerts, setConcerts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showPast, setShowPast] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -50,7 +51,6 @@ export default function VenueDetail({ session }) {
     )
   }
 
-  const [showPast, setShowPast] = useState(false)
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
