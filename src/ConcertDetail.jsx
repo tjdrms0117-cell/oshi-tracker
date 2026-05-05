@@ -241,7 +241,7 @@ export default function ConcertDetail({ session }) {
           <Section icon={Ticket} title={`티켓팅 (${ticketRounds.length}회)`}>
             <div className="space-y-3">
               {ticketRounds.map((round) => {
-                const isPast = new Date(round.open_at) <= new Date()
+                const isPast = round.open_at && new Date(round.open_at) <= new Date()
                 
                 return (
                   <div 
@@ -267,16 +267,18 @@ export default function ConcertDetail({ session }) {
                       </span>
                     </div>
                     <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
-                      <div>
-                        🕐 {new Date(round.open_at).toLocaleString('ko', { 
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          weekday: 'short',
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </div>
+                      {round.open_at && (
+                        <div>
+                          🕐 {new Date(round.open_at).toLocaleString('ko', { 
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            weekday: 'short',
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                      )}
                       {round.method && (
                         <div>📋 {methodLabel[round.method]}</div>
                       )}
