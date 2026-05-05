@@ -92,7 +92,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       })
       
       // 2. 티켓팅 라운드 교체
-      const validRounds = editedRounds.filter(r => r.open_at && r.round_name)
+      const validRounds = editedRounds.filter(r => r.round_name)
       await replaceTicketRounds(concertId, validRounds)
       
       // 3. venue 정보 업데이트 (있으면)
