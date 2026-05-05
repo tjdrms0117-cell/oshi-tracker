@@ -42,13 +42,16 @@ export default function Calendar({
     : [{ date: c.date }]
 
   dates.forEach(d => {
-    const liveDate = new Date(d.date)
-    if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
-      const day = liveDate.getDate()
-      if (!events[day]) events[day] = { live: [], tickets: [] }
-      events[day].live.push(c)
-    }
-  })
+  // 양일공연은 attending한 날짜만 표시
+  if (c.is_series && !attendingConcertIds.includes(d.id)) return
+
+  const liveDate = new Date(d.date)
+  if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
+    const day = liveDate.getDate()
+    if (!events[day]) events[day] = { live: [], tickets: [] }
+    events[day].live.push(c)
+  }
+})
       
       ;(c.ticket_rounds || []).forEach(round => {
         if (!round.open_at) return
