@@ -7,10 +7,11 @@ import Step2Concert from './components/submit/Step2Concert'
 import Step3Ticketing from './components/submit/Step3Ticketing'
 import Step4Confirm from './components/submit/Step4Confirm'
 import MySubmissions from './components/submit/MySubmissions'
+import ArtistSubmitForm from './components/submit/ArtistSubmitForm'
 
 export default function SubmitConcert({ session }) {
   const navigate = useNavigate()
-  const [step, setStep] = useState(0) // 0: 시작화면, 1-4: 단계
+  const [step, setStep] = useState(0) // 0: 시작화면, 1-4: 단계, 'artist': 아티스트 제보
   const [artists, setArtists] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [submitting, setSubmitting] = useState(false)
@@ -122,34 +123,62 @@ export default function SubmitConcert({ session }) {
     }
   }
   
+// 아티스트 제보 화면
+  if (step === 'artist') {
+    return (
+      <div className="space-y-5">
+        <button
+          onClick={() => setStep(0)}
+          className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700"
+        >
+          ← 뒤로
+        </button>
+        <ArtistSubmitForm
+          session={session}
+          onDone={() => { setStep(0); loadData() }}
+        />
+      </div>
+    )
+  }
+
   // 시작 화면 (제보 메인)
   if (step === 0) {
     const pendingCount = submissions.filter(s => s.status === 'pending').length
     
     return (
       <div className="space-y-5">
-        {/* 새 제보 버튼 */}
-        <button
-          onClick={startNew}
-          className="w-full p-5 rounded-2xl text-white font-bold text-base shadow-md hover:shadow-lg transition"
-          style={{
-            background: 'linear-gradient(135deg, #e91e63, #00acc1)',
-          }}
-        >
-          ✏️ 새 공연 제보하기
-        </button>
-        
+        {/* 버튼 두 개 */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={startNew}
+            className="p-4 rounded-2xl text-white font-bold text-sm shadow-md hover:shadow-lg transition"
+            style={{ background: 'linear-gradient(135deg, #e91e63, #00acc1)' }}
+          >
+            🎵 공연 제보
+          </button>
+          <button
+            onClick={() => {
+              if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
+              setStep('artist')
+            }}
+            className="p-4 rounded-2xl text-white font-bold text-sm shadow-md hover:shadow-lg transition"
+            style={{ background: 'linear-gradient(135deg, #7e57c2, #e91e63)' }}
+          >
+            🎤 아티스트 제보
+          </button>
+        </div>
+
         {/* 안내 */}
-        <div className="rounded-xl p-3 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900 text-xs text-pink-700 dark:text-pink-300">
+        <div className="rounded-xl p-3 bg-pink-50 border border-pink-200 text-xs text-pink-700">
           💡 제보된 정보는 관리자 검수 후 공개돼요. 정확한 출처와 함께 알려주세요!
         </div>
         
         {/* 내 제보 현황 */}
         <div>
-          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-zinc-900 mb-3 flex items-center gap-2">
             내 제보 현황
             {pendingCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-800 dark:text-amber-200">
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-800">
                 대기 {pendingCount}
               </span>
             )}

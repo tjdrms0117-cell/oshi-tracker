@@ -938,3 +938,78 @@ export async function replaceTicketRounds(concertId, rounds) {
 }
 
 // 공연장 수정
+// ============================================
+// 아티스트 제보
+// ============================================
+
+export async function createArtistSubmission(data) {
+  const { error } = await supabase
+    .from('artist_submissions')
+    .insert(data)
+  if (error) throw error
+}
+
+export async function fetchPendingArtistSubmissions() {
+  const { data, error } = await supabase
+    .from('artist_submissions')
+    .select('*, submitter:profiles(nickname)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function approveArtistSubmission(submissionId, reviewerId) {
+  // 1. artists 테이블에 추가
+  const { data: sub } = await supabase
+    .from('artist_submissions')
+    .select('*')
+    .eq('id', submissionId)
+    .single()
+
+  const { error: insertError } = await supabase
+    .from('artists')
+    .insert({
+      name: sub.name,
+      name_jp: sub.name_jp,
+      color: sub.color,
+      top_song_title: sub.top_song_title,
+      top_song_title_jp: sub.top_song_title_jp,
+      top_song_youtube_url: sub.top_song_youtube_url,
+    })
+  if (insertError) throw insertError
+
+  // 2. 상태 업데이트
+  const { error } = await supabase
+    .from('artist_submissions')
+    .update({
+      status: 'approved',
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', submissionId)
+  if (error) throw error
+}
+
+export async function rejectArtistSubmission(submissionId, reason, reviewerId) {
+  const { error } = await supabase
+    .from('artist_submissions')
+    .update({
+      status: 'rejected',
+      reject_reason: reason,
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', submissionId)
+  if (error) throw error
+}
+
+export async function fetchMyArtistSubmissions(userId) {
+  const { data, error } = await supabase
+    .from('artist_submissions')
+    .select('*')
+    .eq('submitted_by', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
