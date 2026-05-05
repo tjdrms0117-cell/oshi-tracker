@@ -6,6 +6,7 @@ import AuthScreen from './AuthScreen'
 import MainApp from './MainApp'
 import ConcertDetail from './ConcertDetail'
 import ArtistDetail from './ArtistDetail'
+import VenueDetail from './VenueDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -57,6 +58,10 @@ export default function App() {
         <Route
           path="/artists/:id"
           element={<ArtistDetail session={session} />}
+        />
+        <Route
+          path="/venues/:id"
+          element={<VenueDetail session={session} />}
         />
         <Route
           path="/login"

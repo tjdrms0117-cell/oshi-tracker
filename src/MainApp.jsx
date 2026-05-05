@@ -10,6 +10,7 @@ import {
   addToAttending,
   removeFromAttending,
   fetchArtistsWithCounts,
+  fetchVenues,
 } from './lib/api'
 import Header from './components/Header'
 import CountryToggle from './components/CountryToggle'
@@ -22,6 +23,7 @@ import ReviewList from './components/ReviewList'
 import ConcertEditModal from './components/ConcertEditModal'
 import { deleteConcert, deleteArtist } from './lib/api'
 import Calendar from './components/Calendar'
+import VenueList from './components/VenueList'
 
 export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
@@ -35,6 +37,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [oshiList, setOshiList] = useState([])
   const [attendingList, setAttendingList] = useState([])
   const [artists, setArtists] = useState([])
+  const [venues, setVenues] = useState([])
   const [editConcertId, setEditConcertId] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -55,12 +58,14 @@ export default function MainApp({ session, theme, onThemeChange }) {
 const loadAllData = async () => {
     setLoading(true)
     try {
-      const [concertsData, artistsData] = await Promise.all([
+      const [concertsData, artistsData, venuesData] = await Promise.all([
         fetchConcerts(),
         fetchArtistsWithCounts().catch(() => []),
+        fetchVenues().catch(() => []),
       ])
       setConcerts(concertsData)
       setArtists(artistsData)
+      setVenues(venuesData)
 
       // 로그인 상태일 때만
       if (session?.user) {
@@ -222,6 +227,7 @@ const loadAllData = async () => {
     { id: 'concerts', label: '공연' },
     { id: 'calendar', label: '달력' },
     { id: 'artists', label: '아티스트' },
+    { id: 'venues', label: '공연장' },
     { id: 'submit', label: '제보' },
   ]
   
@@ -229,6 +235,7 @@ const loadAllData = async () => {
     { id: 'concerts', label: '공연' },
     { id: 'calendar', label: '달력' },
     { id: 'artists', label: '아티스트' },
+    { id: 'venues', label: '공연장' },
     { id: 'review', label: '검수', badge: pendingCount },
   ]
   
@@ -314,6 +321,14 @@ const loadAllData = async () => {
               concerts={concerts}
               attendingConcertIds={attendingConcertIds}
               oshiArtistIds={oshiArtistIds}
+            />
+          )}
+          {activeTab === 'venues' && (
+            <VenueList
+              venues={venues}
+              isAdmin={mode === 'admin' && isAdmin}
+              onEdit={() => {}}
+              onDelete={() => {}}
             />
           )}
           {activeTab === 'artists' && (
