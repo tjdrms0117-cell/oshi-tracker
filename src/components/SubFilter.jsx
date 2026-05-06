@@ -1,10 +1,9 @@
-import { Star, Check, List, Archive, Ticket, Search, X } from 'lucide-react'
+import { Star, Check, List, Archive, Search, X } from 'lucide-react'
 
 const FILTERS = [
   { id: 'attending', label: '내 공연', icon: Check },
   { id: 'oshi', label: '내 오시', icon: Star },
   { id: 'all', label: '전체', icon: List },
-  { id: 'ticketing', label: '티켓팅 임박', icon: Ticket },
   { id: 'past', label: '지난', icon: Archive },
 ]
 
