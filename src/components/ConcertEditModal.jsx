@@ -343,10 +343,3 @@ function Input({ label, value, onChange, type = 'text', placeholder }) {
     </div>
   )
 }
-{(editVenue || addVenueOpen) && (
-  <VenueEditModal
-    venue={editVenue}
-    onClose={() => { setEditVenue(null); setAddVenueOpen(false) }}
-    onDone={() => { setEditVenue(null); setAddVenueOpen(false); loadAllData() }}
-  />
-)}
