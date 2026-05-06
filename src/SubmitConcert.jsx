@@ -30,11 +30,11 @@ export default function SubmitConcert({ session }) {
   }, [session])
   
   const loadData = async () => {
-    try {
-      const [artistsData, mySubData] = await Promise.all([
-        fetchArtists(),
-        fetchMySubmissions(session.user.id).catch(() => []),
-      ])
+  try {
+    const [artistsData, mySubData] = await Promise.all([
+      fetchArtists(),
+      session?.user ? fetchMySubmissions(session.user.id).catch(() => []) : Promise.resolve([]),
+    ])
       setArtists(artistsData)
       setSubmissions(mySubData)
     } catch (err) {
