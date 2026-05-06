@@ -185,7 +185,9 @@ export default function Calendar({
       {(totalLives > 0 || totalTickets > 0) && (
         <div className="flex items-center justify-center gap-3 mb-3 text-[11px]">
           {totalLives > 0 && (
-            <span className="flex items-center gap-1 text-pink-600 dark:text-pink-400">
+            <span className={`flex items-center gap-1 ${
+              filter === 'japan' ? 'text-pink-600' : 'text-cyan-600'
+            }`}>
               <Mic className="w-3 h-3" />
               라이브 {totalLives}
             </span>
@@ -317,13 +319,21 @@ export default function Calendar({
       
       {/* 범례 */}
       <div className="flex items-center justify-center gap-3 mt-3 text-[10px] text-zinc-500 dark:text-zinc-400 flex-wrap">
+        {filter === 'mine' && (
+          <>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm border-l-2 border-cyan-500 bg-cyan-50" />
+              <span>내한</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm border-l-2 border-pink-500 bg-pink-50" />
+              <span>원정</span>
+            </div>
+          </>
+        )}
         <div className="flex items-center gap-1">
-          <Mic className="w-3 h-3 text-cyan-500" />
-          <span>한국 공연</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Mic className="w-3 h-3 text-pink-500" />
-          <span>일본 공연</span>
+          <Mic className="w-3 h-3" style={{ color: filter === 'japan' ? '#db2777' : '#0891b2' }} />
+          <span>라이브</span>
         </div>
         <div className="flex items-center gap-1">
           <Ticket className="w-3 h-3 text-amber-500" />
