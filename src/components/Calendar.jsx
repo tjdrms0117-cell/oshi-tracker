@@ -383,7 +383,7 @@ function MyEventLabel({ event }) {
       className="rounded px-1 py-0.5 text-[9px] leading-tight overflow-hidden relative"
       style={{
         background: `${color}20`,
-        borderLeft: `2px solid ${color}`,
+        borderLeft: `3px solid ${isLive ? (concert.country === 'korea' ? '#00acc1' : '#e91e63') : color}`,
       }}
     >
       <div 
@@ -391,7 +391,6 @@ function MyEventLabel({ event }) {
         style={{ color }}
       >
         {!isLive && '🎫 '}
-      {isLive && (concert.country === 'korea' ? '🇰🇷 ' : '🇯🇵 ')}
       {concert.artist?.name || '미정'}
       </div>
       {timeStr && (
