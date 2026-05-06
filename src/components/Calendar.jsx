@@ -42,8 +42,8 @@ export default function Calendar({
     : [{ date: c.date }]
 
   dates.forEach(d => {
-  // 양일공연은 attending한 날짜만 표시
-  if (c.is_series && !attendingConcertIds.includes(d.id)) return
+  // 내 일정 모드일 때만 attending한 날짜 필터링
+  if (filter === 'mine' && c.is_series && !attendingConcertIds.includes(d.id)) return
 
   const liveDate = new Date(d.date)
   if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
