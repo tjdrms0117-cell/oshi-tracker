@@ -11,7 +11,7 @@ export default function ReviewList({ session }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-  loadData()
+  if (session?.user) loadData()
 }, [session])
 
   const loadData = async () => {

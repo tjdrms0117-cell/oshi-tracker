@@ -371,10 +371,8 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
   <SubmitConcert session={session} />
 </div>
           
-          {isAdmin && (
-  <div className={activeTab === 'review' ? '' : 'hidden'}>
-    <ReviewList session={session} />
-  </div>
+          {activeTab === 'review' && isAdmin && (
+  <ReviewList session={session} />
 )}
         </main>
             </div>
