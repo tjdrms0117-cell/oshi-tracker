@@ -23,13 +23,14 @@ export default function Header({ profile, session, mode, onModeChange, theme, on
         {/* 로고 영역 */}
         <div>
           <h1
-            className="text-2xl font-black tracking-tight leading-none"
+            className="text-2xl font-black tracking-tight leading-none cursor-pointer"
             style={{
               background: 'linear-gradient(90deg, #e91e63 0%, #00acc1 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               letterSpacing: '-0.02em',
             }}
+            onClick={() => { window.location.href = '/' }}
           >
             OSHI TRACKER
           </h1>
