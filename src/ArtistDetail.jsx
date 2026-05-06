@@ -236,7 +236,7 @@ export default function ArtistDetail({ session }) {
       <div className="max-w-3xl mx-auto px-5 pb-20 space-y-6">
         
         {/* 대표곡 */}
-        {artist.top_song_title && (
+        {(artist.top_song_title || artist.top_song_title_jp || artist.top_song_youtube_url) && (
           <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 p-5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-4">
               <Music className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
@@ -245,7 +245,7 @@ export default function ArtistDetail({ session }) {
             <div>
               <div className="mb-3">
                 <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">
-                  {artist.top_song_title}
+                  {artist.top_song_title || artist.top_song_title_jp}
                 </div>
                 {artist.top_song_title_jp && (
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
