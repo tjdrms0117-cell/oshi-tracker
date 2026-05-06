@@ -41,6 +41,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
       : 'concerts'
   )
   const [subFilter, setSubFilter] = useState('all')
+const [searchQuery, setSearchQuery] = useState('')
   
   const [concerts, setConcerts] = useState([])
   const [submissions, setSubmissions] = useState([])
@@ -196,7 +197,17 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
   
   // 현재 국가 + 서브 필터 적용
   const getFilteredConcerts = () => {
-    let filtered = concerts.filter(c => c.country === country)
+  let filtered = concerts.filter(c => c.country === country)
+
+  // 검색 필터
+  if (searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase()
+    filtered = filtered.filter(c =>
+      c.title?.toLowerCase().includes(q) ||
+      c.artist?.name?.toLowerCase().includes(q) ||
+      c.artist?.name_jp?.toLowerCase().includes(q)
+    )
+  }
     
     switch (subFilter) {
       case 'attending':
@@ -318,10 +329,12 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
           {activeTab === 'concerts' && (
             <>
               <SubFilter
-                activeFilter={subFilter}
-                onFilterChange={setSubFilter}
-                counts={subFilterCounts}
-              />
+  activeFilter={subFilter}
+  onFilterChange={setSubFilter}
+  counts={subFilterCounts}
+  searchQuery={searchQuery}
+  onSearchChange={setSearchQuery}
+/>
               <ConcertList
                 concerts={filteredConcerts}
                 oshiArtistIds={oshiArtistIds}
