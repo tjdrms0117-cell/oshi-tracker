@@ -25,6 +25,8 @@ import ConcertEditModal from './components/ConcertEditModal'
 import { deleteConcert, deleteArtist } from './lib/api'
 import Calendar from './components/Calendar'
 import VenueList from './components/VenueList'
+import VenueEditModal from './components/VenueEditModal'
+import { deleteVenue } from './lib/api'
 
 export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
@@ -46,6 +48,8 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [artists, setArtists] = useState([])
   const [venues, setVenues] = useState([])
   const [editConcertId, setEditConcertId] = useState(null)
+  const [editVenue, setEditVenue] = useState(null)
+const [addVenueOpen, setAddVenueOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
   // 프로필 로드
@@ -350,11 +354,20 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
           )}
           {activeTab === 'venues' && (
             <VenueList
-              venues={venues}
-              isAdmin={mode === 'admin' && isAdmin}
-              onEdit={() => {}}
-              onDelete={() => {}}
-            />
+  venues={venues}
+  isAdmin={mode === 'admin' && isAdmin}
+  onEdit={(venue) => setEditVenue(venue)}
+  onDelete={async (venue) => {
+    if (!confirm(`"${venue.name}" 공연장을 삭제할까요?`)) return
+    try {
+      await deleteVenue(venue.id)
+      loadAllData()
+    } catch (err) {
+      alert('삭제 오류: ' + err.message)
+    }
+  }}
+  onAdd={() => setAddVenueOpen(true)}
+/>
           )}
           {activeTab === 'artists' && (
             <ArtistList

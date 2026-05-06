@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import VenueCard from './VenueCard'
 
-export default function VenueList({ venues, isAdmin, onEdit, onDelete }) {
+export default function VenueList({ venues, isAdmin, onEdit, onDelete, onAdd }) {
   const [country, setCountry] = useState('korea')
 
   const filtered = venues.filter(v => v.country === country)
@@ -9,7 +9,7 @@ export default function VenueList({ venues, isAdmin, onEdit, onDelete }) {
   return (
     <div className="space-y-4">
       {/* 한국/일본 탭 */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center justify-between">
         {[
           { id: 'korea', label: '🇰🇷 한국' },
           { id: 'japan', label: '🇯🇵 일본' },
@@ -26,6 +26,14 @@ export default function VenueList({ venues, isAdmin, onEdit, onDelete }) {
             {tab.label}
           </button>
         ))}
+      {isAdmin && (
+          <button
+            onClick={onAdd}
+            className="px-3 py-2 rounded-full text-sm font-bold bg-pink-500 text-white hover:bg-pink-600 transition"
+          >
+            + 추가
+          </button>
+        )}
       </div>
 
       {filtered.length === 0 ? (
