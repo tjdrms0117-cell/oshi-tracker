@@ -290,18 +290,22 @@ export default function Calendar({
                     </div>
                   )}
                   
-                  {/* "내한"/"원정" 모드: 아이콘 뱃지 */}
+                  {/* "내한"/"원정" 모드: 공연명 표시 */}
                   {filter !== 'mine' && hasEvents && (
-                    <div className="mt-auto flex flex-wrap gap-0.5 items-end">
-                      {koreaCount > 0 && (
-                        <EventBadge type="live" country="korea" count={koreaCount} />
-                      )}
-                      {japanCount > 0 && (
-                        <EventBadge type="live" country="japan" count={japanCount} />
-                      )}
-                      {ticketCount > 0 && (
+                    <div className="mt-1 flex-1 flex flex-col justify-end overflow-hidden gap-0.5">
+                      {events.live.length === 1 ? (
+                        <MyEventLabel event={{ type: 'live', concert: events.live[0] }} />
+                      ) : events.live.length > 1 ? (
+                        <div className="flex flex-wrap gap-0.5 items-end">
+                          {koreaCount > 0 && <EventBadge type="live" country="korea" count={koreaCount} />}
+                          {japanCount > 0 && <EventBadge type="live" country="japan" count={japanCount} />}
+                        </div>
+                      ) : null}
+                      {ticketCount === 1 ? (
+                        <MyEventLabel event={{ type: 'ticket', concert: events.tickets[0].concert, round: events.tickets[0].round }} />
+                      ) : ticketCount > 1 ? (
                         <EventBadge type="ticket" count={ticketCount} />
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
@@ -387,7 +391,8 @@ function MyEventLabel({ event }) {
         style={{ color }}
       >
         {!isLive && '🎫 '}
-        {concert.artist?.name || '미정'}
+      {isLive && (concert.country === 'korea' ? '🇰🇷 ' : '🇯🇵 ')}
+      {concert.artist?.name || '미정'}
       </div>
       {timeStr && (
         <div className="text-zinc-600 dark:text-zinc-400 font-mono text-[8px]">
