@@ -952,7 +952,7 @@ export async function createArtistSubmission(data) {
 export async function fetchPendingArtistSubmissions() {
   const { data, error } = await supabase
     .from('artist_submissions')
-    .select('*, submitter:profiles(nickname)')
+    .select('*, submitter:profiles!artist_submissions_submitted_by_fkey(nickname)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true })
   if (error) throw error
