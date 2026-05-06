@@ -378,7 +378,8 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
               isAdmin={mode === 'admin' && isAdmin}
               onToggleOshi={handleToggleOshi}
               onAddArtist={() => setAddArtistOpen(true)}
-              onArtistUpdated={loadAllData}
+onDeleteArtist={handleDeleteArtist}
+onArtistUpdated={loadAllData}
             />
           )}
           
