@@ -247,7 +247,7 @@ export default function ArtistDetail({ session }) {
                 <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">
                   {artist.top_song_title || artist.top_song_title_jp}
                 </div>
-                {artist.top_song_title_jp && (
+                {artist.top_song_title && artist.top_song_title_jp && artist.top_song_title !== artist.top_song_title_jp && (
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
                     {artist.top_song_title_jp}
                   </div>
