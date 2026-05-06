@@ -401,6 +401,13 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
           }}
         />
       )}
+      {(editVenue || addVenueOpen) && (
+        <VenueEditModal
+          venue={editVenue}
+          onClose={() => { setEditVenue(null); setAddVenueOpen(false) }}
+          onDone={() => { setEditVenue(null); setAddVenueOpen(false); loadAllData() }}
+        />
+      )}
 
     </div>
   )
