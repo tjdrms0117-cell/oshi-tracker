@@ -27,6 +27,7 @@ import Calendar from './components/Calendar'
 import VenueList from './components/VenueList'
 import VenueEditModal from './components/VenueEditModal'
 import { deleteVenue } from './lib/api'
+import ArtistEditModal from './components/ArtistEditModal'
 
 export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
@@ -49,6 +50,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [venues, setVenues] = useState([])
   const [editConcertId, setEditConcertId] = useState(null)
   const [editVenue, setEditVenue] = useState(null)
+  const [addArtistOpen, setAddArtistOpen] = useState(false)
 const [addVenueOpen, setAddVenueOpen] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -375,7 +377,7 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
               oshiArtistIds={oshiArtistIds}
               isAdmin={mode === 'admin' && isAdmin}
               onToggleOshi={handleToggleOshi}
-              onDeleteArtist={handleDeleteArtist}
+              onAddArtist={() => setAddArtistOpen(true)}
               onArtistUpdated={loadAllData}
             />
           )}
@@ -406,6 +408,13 @@ const handleToggleAttendingDays = async (toAdd, toRemove) => {
           venue={editVenue}
           onClose={() => { setEditVenue(null); setAddVenueOpen(false) }}
           onDone={() => { setEditVenue(null); setAddVenueOpen(false); loadAllData() }}
+        />
+      )}
+      {addArtistOpen && (
+        <ArtistEditModal
+          artist={null}
+          onClose={() => setAddArtistOpen(false)}
+          onDone={() => { setAddArtistOpen(false); loadAllData() }}
         />
       )}
 

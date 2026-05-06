@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { X, Save, Music } from 'lucide-react'
-import { updateArtist } from '../lib/api'
+import { updateArtist, createArtist } from '../lib/api'
 
 export default function ArtistEditModal({ artist, onClose, onDone }) {
-  const [name, setName] = useState(artist.name || '')
-  const [nameJp, setNameJp] = useState(artist.name_jp || '')
-  const [color, setColor] = useState(artist.color || '#e91e63')
-  const [topSongTitle, setTopSongTitle] = useState(artist.top_song_title || '')
-  const [topSongTitleJp, setTopSongTitleJp] = useState(artist.top_song_title_jp || '')
-  const [topSongUrl, setTopSongUrl] = useState(artist.top_song_youtube_url || '')
+  const isNew = !artist
+  const [name, setName] = useState(artist?.name || '')
+  const [nameJp, setNameJp] = useState(artist?.name_jp || '')
+  const [color, setColor] = useState(artist?.color || '#e91e63')
+  const [topSongTitle, setTopSongTitle] = useState(artist?.top_song_title || '')
+  const [topSongTitleJp, setTopSongTitleJp] = useState(artist?.top_song_title_jp || '')
+  const [topSongUrl, setTopSongUrl] = useState(artist?.top_song_youtube_url || '')
   const [saving, setSaving] = useState(false)
   
   const handleSave = async () => {
@@ -19,7 +20,17 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
     
     setSaving(true)
     try {
-      await updateArtist(artist.id, {
+      if (isNew) {
+        await createArtist({
+          name: name.trim(),
+          nameJp: nameJp.trim() || null,
+          color,
+          topSongTitle: topSongTitle.trim() || null,
+          topSongTitleJp: topSongTitleJp.trim() || null,
+          topSongYoutubeUrl: topSongUrl.trim() || null,
+        })
+      } else {
+        await updateArtist(artist.id, {
         name: name.trim(),
         name_jp: nameJp.trim() || null,
         color,
@@ -27,7 +38,8 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
         top_song_title_jp: topSongTitleJp.trim() || null,
         top_song_youtube_url: topSongUrl.trim() || null,
       })
-      alert('수정 완료')
+      }
+      alert(isNew ? '추가 완료' : '수정 완료')
       onDone()
     } catch (err) {
       alert('수정 중 오류: ' + err.message)
@@ -58,7 +70,7 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
       >
         <div className="flex items-center justify-between p-4 border-b border-stone-200 dark:border-zinc-800">
           <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-            가수 수정
+            {isNew ? '가수 추가' : '가수 수정'}
           </h2>
           <button
             onClick={onClose}
