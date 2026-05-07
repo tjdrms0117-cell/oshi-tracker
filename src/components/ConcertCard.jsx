@@ -56,7 +56,13 @@ export default function ConcertCard({
   const upcomingRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) > now)
   const pastRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) <= now)
   const pendingRounds = ticketRounds.filter(r => !r.open_at)
-  const nextRound = upcomingRounds[0] || pendingRounds[0]
+  const ongoingRounds = ticketRounds
+  .filter(r =>
+    r.open_at && new Date(r.open_at) <= now &&
+    r.close_at && new Date(r.close_at) > now
+  )
+  .sort((a, b) => new Date(b.open_at) - new Date(a.open_at)) // 가장 늦게 시작한 것 먼저
+const nextRound = ongoingRounds[0] || upcomingRounds[0] || pendingRounds[0]
   
   const getCountdown = (openAt) => {
     if (!openAt) return '공개전'
@@ -331,8 +337,8 @@ export default function ConcertCard({
                   {ticketsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                   <span>
                     {nextRound 
-                      ? `이전 티켓팅 ${pastRounds.length}개 보기` 
-                      : `티켓팅 ${ticketRounds.length}개 보기`}
+                      ? `다른 티켓팅 ${ticketRounds.length - 1}개 보기` 
+: `티켓팅 ${ticketRounds.length}개 보기`}
                   </span>
                 </button>
               )}

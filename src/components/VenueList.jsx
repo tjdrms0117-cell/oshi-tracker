@@ -1,9 +1,6 @@
-import { useState } from 'react'
 import VenueCard from './VenueCard'
 
-export default function VenueList({ venues, isAdmin, onEdit, onDelete, onAdd }) {
-  const [country, setCountry] = useState('korea')
-
+export default function VenueList({ venues, isAdmin, onEdit, onDelete, onAdd, country, onCountryChange }) {
   const filtered = venues.filter(v => v.country === country)
 
   return (
@@ -16,7 +13,7 @@ export default function VenueList({ venues, isAdmin, onEdit, onDelete, onAdd }) 
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setCountry(tab.id)}
+            onClick={() => onCountryChange(tab.id)}
             className={`px-4 py-2 rounded-full text-sm font-bold transition ${
               country === tab.id
                 ? 'bg-zinc-900 text-white'
@@ -26,7 +23,7 @@ export default function VenueList({ venues, isAdmin, onEdit, onDelete, onAdd }) 
             {tab.label}
           </button>
         ))}
-      {isAdmin && (
+        {isAdmin && (
           <button
             onClick={onAdd}
             className="px-3 py-2 rounded-full text-sm font-bold bg-pink-500 text-white hover:bg-pink-600 transition"

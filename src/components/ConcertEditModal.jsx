@@ -7,6 +7,7 @@ import {
   updateVenue,
   fetchConcertById,
 } from '../lib/api'
+import { supabase } from '../lib/supabase'
 
 export default function ConcertEditModal({ concertId, onClose, onDone }) {
   const [concert, setConcert] = useState(null)
@@ -17,6 +18,11 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
   const [showVenueDetails, setShowVenueDetails] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  
+  // DAY2 관련 state
+  const [day2Concert, setDay2Concert] = useState(null)
+  const [day2Date, setDay2Date] = useState('')
+  const [day2Time, setDay2Time] = useState('')
   
   useEffect(() => {
     loadData()
@@ -41,18 +47,21 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: c.memo || '',
         source_url: c.source_url || '',
       })
-      setEditedRounds((c.ticket_rounds || []).map(r => ({
-        id: r.id,
-        concert_id: r.concert_id,
-        round_name: r.round_name,
-        open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
-        method: r.method || '',
-        ticket_site: r.ticket_site || '',
-        price_info: r.price_info || '',
-        note: r.note || '',
-        ticket_url: r.ticket_url || '',
-        close_at: r.close_at ? new Date(r.close_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
-      })))
+      setEditedRounds((c.ticket_rounds || [])
+        .filter(r => !r._day_label || r._day_label === c.day_label || !c.day_label)
+        .map(r => ({
+          id: r.id,
+          concert_id: r.concert_id,
+          round_name: r.round_name,
+          open_at: r.open_at ? new Date(r.open_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
+          method: r.method || '',
+          ticket_site: r.ticket_site || '',
+          price_info: r.price_info || '',
+          note: r.note || '',
+          ticket_url: r.ticket_url || '',
+          close_at: r.close_at ? new Date(r.close_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
+          result_at: r.result_at ? new Date(r.result_at).toLocaleString('sv', { timeZone: 'Asia/Seoul' }).slice(0, 16) : '',
+        })))
       
       // venue 정보
       if (c.venue) {
@@ -69,6 +78,21 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       // venues 목록
       const v = await fetchVenues({ country: c.country })
       setVenues(v)
+
+      // 양일 공연이면 DAY2 로드
+      if (c.series_id && c.day_label === 'DAY1') {
+        const { data: day2 } = await supabase
+          .from('concerts')
+          .select('id, date, time')
+          .eq('series_id', c.series_id)
+          .eq('day_label', 'DAY2')
+          .single()
+        if (day2) {
+          setDay2Concert(day2)
+          setDay2Date(day2.date || '')
+          setDay2Time(day2.time?.slice(0, 5) || '')
+        }
+      }
     } catch (err) {
       console.error('로드 실패:', err)
     } finally {
@@ -94,14 +118,26 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: editedData.memo || null,
         source_url: editedData.source_url || null,
       })
+
+      // 2. DAY2 날짜/시간 저장
+      if (day2Concert) {
+        await updateConcert(day2Concert.id, {
+          date: day2Date || null,
+          time: day2Time || null,
+        })
+      }
       
-      // 2. 티켓팅 라운드 교체
+      // 3. 티켓팅 라운드 교체 (close_at 버그 수정)
       const validRounds = editedRounds
         .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
-        .map(r => ({ ...r, open_at: r.open_at || null }))
+        .map(r => ({
+          ...r,
+          open_at: r.open_at || null,
+          close_at: r.close_at && r.close_at.trim() !== '' ? r.close_at : null,
+        }))
       await replaceTicketRounds(concertId, validRounds)
       
-      // 3. venue 정보 업데이트 (있으면)
+      // 4. venue 정보 업데이트 (있으면)
       if (editedData.venue_id && (editedVenue.address || editedVenue.subway_info || editedVenue.capacity)) {
         const venueUpdates = {}
         if (editedVenue.name_local) venueUpdates.name_local = editedVenue.name_local
@@ -129,7 +165,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
   const addRound = () => {
     setEditedRounds([
       ...editedRounds,
-      { round_name: '', open_at: '', method: 'first-come', ticket_site: '', price_info: '', note: '' }
+      { round_name: '', open_at: '', close_at: '', result_at: '', method: 'first-come', ticket_site: '', price_info: '', note: '', ticket_url: '' }
     ])
   }
   
@@ -177,10 +213,41 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
           <Section icon={Calendar} title="공연 정보">
             <div className="space-y-2">
               <Input label="제목" value={editedData.title} onChange={v => setEditedData({...editedData, title: v})} />
+
+              {/* DAY1 날짜/시간 */}
               <div className="grid grid-cols-2 gap-2">
-                <Input label="날짜" type="date" value={editedData.date} onChange={v => setEditedData({...editedData, date: v})} />
-                <Input label="시간" type="time" value={editedData.time} onChange={v => setEditedData({...editedData, time: v})} />
+                <Input
+                  label={day2Concert ? 'DAY1 날짜' : '날짜'}
+                  type="date"
+                  value={editedData.date}
+                  onChange={v => setEditedData({...editedData, date: v})}
+                />
+                <Input
+                  label={day2Concert ? 'DAY1 시간' : '시간'}
+                  type="time"
+                  value={editedData.time}
+                  onChange={v => setEditedData({...editedData, time: v})}
+                />
               </div>
+
+              {/* DAY2 날짜/시간 (양일 공연만 표시) */}
+              {day2Concert && (
+                <div className="grid grid-cols-2 gap-2 p-2.5 bg-pink-50 dark:bg-pink-950/20 rounded-lg border border-pink-200 dark:border-pink-900">
+                  <Input
+                    label="DAY2 날짜"
+                    type="date"
+                    value={day2Date}
+                    onChange={v => setDay2Date(v)}
+                  />
+                  <Input
+                    label="DAY2 시간"
+                    type="time"
+                    value={day2Time}
+                    onChange={v => setDay2Time(v)}
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <Input label="공연 시간 (분)" type="number" value={editedData.duration_minutes} onChange={v => setEditedData({...editedData, duration_minutes: v})} />
                 <Input label="좌석" value={editedData.seat_type} onChange={v => setEditedData({...editedData, seat_type: v})} />
@@ -259,6 +326,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
                     <Input label="라운드 이름" value={round.round_name} onChange={v => updateRound(idx, 'round_name', v)} />
                     <Input label="접수 시작" type="datetime-local" value={round.open_at} onChange={v => updateRound(idx, 'open_at', v)} />
                     <Input label="접수 마감 (선택)" type="datetime-local" value={round.close_at || ''} onChange={v => updateRound(idx, 'close_at', v)} />
+                    <Input label="결과 발표 (선택)" type="datetime-local" value={round.result_at || ''} onChange={v => updateRound(idx, 'result_at', v)} />
                     <div className="grid grid-cols-2 gap-1.5">
                       <select
                         value={round.method}
