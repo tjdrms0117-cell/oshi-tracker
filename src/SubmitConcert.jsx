@@ -367,6 +367,8 @@ export default function SubmitConcert({ session }) {
             artists={artists}
             value={festivalArtists}
             onChange={setFestivalArtists}
+            startDate={festivalData.dates?.[0]?.date || ''}
+            endDate={festivalData.dates?.[festivalData.dates.length - 1]?.date || ''}
           />
         )}
         {stepNum === 3 && (

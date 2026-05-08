@@ -27,8 +27,9 @@ import { deleteConcert, deleteArtist } from './lib/api'
 import Calendar from './components/Calendar'
 import VenueList from './components/VenueList'
 import VenueEditModal from './components/VenueEditModal'
-import { deleteVenue } from './lib/api'
+import { deleteVenue, fetchFestivals } from './lib/api'
 import ArtistEditModal from './components/ArtistEditModal'
+import FestivalEditModal from './components/FestivalEditModal'
 
 const VALID_TABS = ['concerts', 'calendar', 'artists', 'venues', 'submit', 'review']
 
@@ -66,6 +67,8 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [editVenue, setEditVenue] = useState(null)
   const [addArtistOpen, setAddArtistOpen] = useState(false)
   const [addVenueOpen, setAddVenueOpen] = useState(false)
+  const [festivals, setFestivals] = useState([])
+  const [editFestival, setEditFestival] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -81,14 +84,16 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      const [concertsData, artistsData, venuesData] = await Promise.all([
+      const [concertsData, artistsData, venuesData, festivalsData] = await Promise.all([
         fetchConcerts(),
         fetchArtistsWithCounts().catch(() => []),
         fetchVenues().catch(() => []),
+        fetchFestivals().catch(() => []),
       ])
       setConcerts(concertsData)
       setArtists(artistsData)
       setVenues(venuesData)
+      setFestivals(festivalsData)
 
       if (session?.user) {
         const [submissionsData, oshiData, attendingData, festivalSubData] = await Promise.all([
@@ -203,6 +208,8 @@ export default function MainApp({ session, theme, onThemeChange }) {
     }
     
     switch (subFilter) {
+      case 'festival':
+        return []
       case 'attending':
         filtered = filtered.filter(c =>
           attendingConcertIds.includes(c.id) ||
@@ -266,6 +273,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
       c.country === country && 
       new Date(c.date) < today
     ).length,
+    festival: festivals.filter(f => f.country === country).length,
     ticketing: (() => {
       const now = new Date()
       const limit = new Date(now.getTime() + 72 * 60 * 60 * 1000)
@@ -347,6 +355,9 @@ export default function MainApp({ session, theme, onThemeChange }) {
               />
               <ConcertList
                 concerts={filteredConcerts}
+                festivals={festivals.filter(f => f.country === country)}
+                activeFilter={subFilter}
+                onEditFestival={(fest) => setEditFestival(fest)}
                 oshiArtistIds={oshiArtistIds}
                 attendingConcertIds={attendingConcertIds}
                 isAdmin={mode === 'admin' && isAdmin}
@@ -373,6 +384,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
           {activeTab === 'calendar' && (
             <Calendar
               concerts={concerts}
+              festivals={festivals}
               attendingConcertIds={attendingConcertIds}
               oshiArtistIds={oshiArtistIds}
             />
@@ -393,6 +405,8 @@ export default function MainApp({ session, theme, onThemeChange }) {
                 }
               }}
               onAdd={() => setAddVenueOpen(true)}
+              country={country}
+              onCountryChange={setCountry}
             />
           )}
 
@@ -430,6 +444,14 @@ export default function MainApp({ session, theme, onThemeChange }) {
           venue={editVenue}
           onClose={() => { setEditVenue(null); setAddVenueOpen(false) }}
           onDone={() => { setEditVenue(null); setAddVenueOpen(false); loadAllData() }}
+        />
+      )}
+      {editFestival !== null && (
+        <FestivalEditModal
+          festival={editFestival === 'new' ? null : editFestival}
+          artists={artists}
+          onClose={() => setEditFestival(null)}
+          onDone={() => { setEditFestival(null); loadAllData() }}
         />
       )}
       {addArtistOpen && (

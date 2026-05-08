@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Mic, Ticket, Star, X } from 'lucide-react'
 
 export default function Calendar({ 
   concerts, 
+  festivals = [],
   attendingConcertIds = [],
   oshiArtistIds = [],
 }) {
@@ -89,8 +90,24 @@ if (round.close_at) {
       })
     })
     
+    // 페스티벌 날짜 추가
+    festivals.forEach(fest => {
+      const start = new Date(fest.date)
+      const end = fest.end_date ? new Date(fest.end_date) : new Date(fest.date)
+      const cur = new Date(start)
+      while (cur <= end) {
+        if (cur.getFullYear() === year && cur.getMonth() === month) {
+          const day = cur.getDate()
+          if (!events[day]) events[day] = { live: [], tickets: [], festivals: [] }
+          if (!events[day].festivals) events[day].festivals = []
+          events[day].festivals.push(fest)
+        }
+        cur.setDate(cur.getDate() + 1)
+      }
+    })
+
     return events
-  }, [filteredConcerts, year, month])
+  }, [filteredConcerts, festivals, year, month])
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -278,7 +295,14 @@ if (round.close_at) {
                       )}
                     </div>
                   )}
-                  
+                  {events.festivals?.length > 0 && (
+                    <div className="rounded px-1 py-0.5 text-[9px] leading-tight overflow-hidden mt-0.5"
+                      style={{ background: '#06b6d420', borderLeft: '3px solid #06b6d4' }}>
+                      <div className="font-bold truncate" style={{ color: '#0e7490' }}>
+                        🎪 {events.festivals[0].name}
+                      </div>
+                    </div>
+                  )}
                   {filter !== 'mine' && hasEvents && (
                     <div className="mt-1 flex-1 flex flex-col justify-end overflow-hidden gap-0.5">
                       {events.live.length === 1 ? (
@@ -566,6 +590,22 @@ function DayDetailModal({ date, events, isMine, isOshiArtist, onClose, onConcert
             </div>
           ) : (
             <>
+            {events.festivals?.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold mb-2 flex items-center gap-1" style={{ color: '#0e7490' }}>
+                    🎪 페스티벌 ({events.festivals.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {events.festivals.map(fest => (
+                      <div key={fest.id} className="rounded-xl p-3 border"
+                        style={{ borderColor: '#06b6d440', background: '#06b6d410' }}>
+                        <div className="text-xs font-bold" style={{ color: '#0e7490' }}>{fest.name}</div>
+                        {fest.venue && <div className="text-[11px] text-zinc-500 mt-0.5">📍 {fest.venue}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {events.live.length > 0 && (
                 <div>
                   <h3 className="text-xs font-bold text-pink-600 dark:text-pink-400 mb-2 flex items-center gap-1">

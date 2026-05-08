@@ -550,32 +550,43 @@ export async function fetchArtistsWithCounts() {
     .from('artists')
     .select('*')
     .order('name')
-  
   if (artistError) throw artistError
-  
+
   const { data: concerts, error: concertError } = await supabase
     .from('concerts')
     .select('artist_id, date, country')
-  
   if (concertError) throw concertError
+
+  // 페스티벌 출연 정보
+  const { data: festivalArtists } = await supabase
+    .from('festival_artists')
+    .select('artist_id, performance_date, festival:festivals(id, name, date, end_date, country)')
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
-  const artistsWithCounts = artists.map(artist => {
+
+  return artists.map(artist => {
     const artistConcerts = concerts.filter(c => c.artist_id === artist.id)
     const upcoming = artistConcerts.filter(c => new Date(c.date) >= today)
     const past = artistConcerts.filter(c => new Date(c.date) < today)
-    
+
+    // 이 아티스트의 페스티벌
+    const myFestivals = (festivalArtists || [])
+      .filter(fa => fa.artist_id === artist.id && fa.festival)
+      .map(fa => ({ ...fa.festival, performance_date: fa.performance_date }))
+
+    const upcomingFestivals = myFestivals.filter(f => new Date(f.date) >= today)
+
     return {
       ...artist,
       total_concerts: artistConcerts.length,
       upcoming_concerts: upcoming.length,
       past_concerts: past.length,
+      upcoming_kr: upcoming.filter(c => c.country === 'korea').length,
+      upcoming_jp: upcoming.filter(c => c.country === 'japan').length,
+      upcoming_festivals: upcomingFestivals,
     }
   })
-  
-  return artistsWithCounts
 }
 
 // ============================================
@@ -981,12 +992,67 @@ export async function fetchFestivals() {
       *,
       venue:venues(*),
       festival_artists(
+        id,
+        artist_id,
+        performance_date,
+        start_time,
+        end_time,
+        stage,
         artist:artists(*)
       )
     `)
     .order('date', { ascending: true })
   if (error) throw error
   return data || []
+}
+
+export async function fetchFestivalById(festivalId) {
+  const { data, error } = await supabase
+    .from('festivals')
+    .select(`
+      *,
+      venue:venues(*),
+      festival_artists(
+        id,
+        artist_id,
+        performance_date,
+        start_time,
+        end_time,
+        stage,
+        artist:artists(*)
+      )
+    `)
+    .eq('id', festivalId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function fetchMyFestivalPicks(userId, festivalId) {
+  const { data, error } = await supabase
+    .from('festival_picks')
+    .select('artist_id')
+    .eq('user_id', userId)
+    .eq('festival_id', festivalId)
+  if (error) throw error
+  return (data || []).map(p => p.artist_id)
+}
+
+export async function toggleFestivalPick(userId, festivalId, artistId, currentlyPicked) {
+  if (currentlyPicked) {
+    const { error } = await supabase
+      .from('festival_picks')
+      .delete()
+      .eq('user_id', userId)
+      .eq('festival_id', festivalId)
+      .eq('artist_id', artistId)
+    if (error) throw error
+  } else {
+    const { error } = await supabase
+      .from('festival_picks')
+      .insert({ user_id: userId, festival_id: festivalId, artist_id: artistId })
+    if (error) throw error
+  }
 }
 
 export async function createFestivalSubmission(submissionData) {

@@ -1,7 +1,9 @@
 import ConcertCard from './ConcertCard'
+import FestivalCard from './FestivalCard'
 
 export default function ConcertList({
   concerts,
+  festivals = [],
   oshiArtistIds = [],
   attendingConcertIds = [],
   isAdmin = false,
@@ -9,9 +11,37 @@ export default function ConcertList({
   onToggleAttendingDays,
   onEdit,
   onDelete,
+  onEditFestival,
+  activeFilter,
   emptyMessage = '공연이 없어요',
   emptySubMessage = '',
 }) {
+  // 페스티벌 필터
+  if (activeFilter === 'festival') {
+    if (!festivals || festivals.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <div className="text-4xl mb-3 opacity-30">🎪</div>
+          <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-1">등록된 페스티벌이 없어요</p>
+          <p className="text-xs text-zinc-400 dark:text-zinc-500 italic">제보 탭에서 알려주세요</p>
+        </div>
+      )
+    }
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {festivals.map(festival => (
+          <FestivalCard
+            key={festival.id}
+            festival={festival}
+            isAdmin={isAdmin}
+            onEdit={onEditFestival}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  // 일반 공연 목록
   if (!concerts || concerts.length === 0) {
     return (
       <div className="text-center py-16">

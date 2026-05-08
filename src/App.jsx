@@ -7,6 +7,7 @@ import MainApp from './MainApp'
 import ConcertDetail from './ConcertDetail'
 import ArtistDetail from './ArtistDetail'
 import VenueDetail from './VenueDetail'
+import FestivalDetail from './FestivalDetail'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -62,6 +63,10 @@ export default function App() {
         <Route
           path="/venues/:id"
           element={<VenueDetail session={session} />}
+        />
+        <Route
+          path="/festivals/:id"
+          element={<FestivalDetail session={session} />}
         />
         <Route
           path="/login"

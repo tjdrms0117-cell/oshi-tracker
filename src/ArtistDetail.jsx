@@ -11,6 +11,7 @@ import {
   addToAttending,
   removeFromAttending,
 } from './lib/api'
+import { supabase } from './lib/supabase'
 import ConcertCard from './components/ConcertCard'
 
 export default function ArtistDetail({ session }) {
@@ -23,7 +24,8 @@ export default function ArtistDetail({ session }) {
   const [attendingList, setAttendingList] = useState([])
   const [loading, setLoading] = useState(true)
   const [oshiLoading, setOshiLoading] = useState(false)
-  
+  const [festivals, setFestivals] = useState([])
+
   useEffect(() => {
     loadData()
   }, [id, session])
@@ -37,6 +39,13 @@ export default function ArtistDetail({ session }) {
       ])
       setArtist(artistData)
       setConcerts(concertsData)
+
+      // 이 아티스트가 출연하는 페스티벌
+      const { data: faData } = await supabase
+        .from('festival_artists')
+        .select('festival_id, performance_date, festivals(*)')
+        .eq('artist_id', id)
+      setFestivals((faData || []).map(fa => ({ ...fa.festivals, performance_date: fa.performance_date })))
 
       if (session?.user) {
         const [oshi, attending] = await Promise.all([
@@ -300,6 +309,44 @@ export default function ArtistDetail({ session }) {
           </section>
         )}
         
+        {/* 예정 페스티벌 */}
+        {festivals.filter(f => f && new Date(f.date) >= today).length > 0 && (
+          <section>
+            <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 px-1">
+              <span>🎪</span>
+              페스티벌 출연 예정
+            </h2>
+            <div className="space-y-2">
+              {festivals
+                .filter(f => f && new Date(f.date) >= today)
+                .sort((a, b) => new Date(a.date) - new Date(b.date))
+                .map(f => (
+                  <button
+                    key={f.id}
+                    onClick={() => navigate(`/festivals/${f.id}`)}
+                    className="w-full text-left rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 hover:shadow-md transition flex items-center gap-3"
+                  >
+                    <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ background: 'linear-gradient(#06b6d4, #0e7490)' }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold" style={{ color: '#0e7490' }}>🎪 페스티벌</div>
+                      <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{f.name}</div>
+                      <div className="text-[11px] text-zinc-500 mt-0.5">
+                        {new Date(f.date).toLocaleDateString('ko')}
+                        {f.performance_date && f.performance_date !== f.date && (
+                          <span className="ml-1 px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 font-bold">
+                            {new Date(f.performance_date).toLocaleDateString('ko', { month: 'numeric', day: 'numeric' })} 출연
+                          </span>
+                        )}
+                        {f.venue && <span className="ml-1">· {f.venue}</span>}
+                      </div>
+                    </div>
+                    <span className="text-zinc-400 text-xs">›</span>
+                  </button>
+                ))}
+            </div>
+          </section>
+        )}
+
         {/* 지난 공연 */}
         {pastConcerts.length > 0 && (
           <section>

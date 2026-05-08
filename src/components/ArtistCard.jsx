@@ -68,21 +68,32 @@ export default function ArtistCard({
             )}
             
             {/* 공연 개수 */}
-            <div className="flex items-center gap-2 mt-1.5 text-[10px]">
-              {artist.upcoming_concerts > 0 && (
-                <span className="font-bold text-pink-600 dark:text-pink-400">
-                  예정 {artist.upcoming_concerts}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              {artist.upcoming_kr > 0 && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400">
+                  🇰🇷 <span className="text-[10px]">{artist.upcoming_kr}</span>
                 </span>
+              )}
+              {artist.upcoming_jp > 0 && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400">
+                  🇯🇵 <span className="text-[10px]">{artist.upcoming_jp}</span>
+                </span>
+              )}
+              {(artist.upcoming_festivals || []).some(f => f.country === 'korea') && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400">
+                  🇰🇷 <span style={{ fontFamily: 'Georgia, serif', fontSize: '9px', fontStyle: 'italic' }}>Fes.</span>
+                </span>
+              )}
+              {(artist.upcoming_festivals || []).some(f => f.country === 'japan') && (
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400">
+                  🇯🇵 <span style={{ fontFamily: 'Georgia, serif', fontSize: '9px', fontStyle: 'italic' }}>Fes.</span>
+                </span>
+              )}
+              {artist.upcoming_concerts === 0 && (artist.upcoming_festivals || []).length === 0 && (
+                <span className="text-[11px] text-zinc-400 dark:text-zinc-500 italic">예정 없음</span>
               )}
               {artist.past_concerts > 0 && (
-                <span className="text-zinc-400 dark:text-zinc-500">
-                  지난 {artist.past_concerts}
-                </span>
-              )}
-              {artist.total_concerts === 0 && (
-                <span className="text-zinc-400 dark:text-zinc-500 italic">
-                  공연 없음
-                </span>
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500">지난 {artist.past_concerts}</span>
               )}
             </div>
           </div>
