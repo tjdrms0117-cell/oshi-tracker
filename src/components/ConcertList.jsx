@@ -29,20 +29,20 @@ export default function ConcertList({
   }
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
       {concerts.map((concert) => (
         <ConcertCard
           key={concert.id}
           concert={concert}
           isOshi={oshiArtistIds.includes(concert.artist_id)}
           isAttending={
-  attendingConcertIds.includes(concert.id) ||
-  (concert.is_series && concert.series_dates?.some(d => attendingConcertIds.includes(d.id)))
-}
-attendingConcertIds={attendingConcertIds}
-isAdmin={isAdmin}
-onToggleAttending={onToggleAttending}
-onToggleAttendingDays={onToggleAttendingDays}
+            attendingConcertIds.includes(concert.id) ||
+            (concert.is_series && concert.series_dates?.some(d => attendingConcertIds.includes(d.id)))
+          }
+          attendingConcertIds={attendingConcertIds}
+          isAdmin={isAdmin}
+          onToggleAttending={onToggleAttending}
+          onToggleAttendingDays={onToggleAttendingDays}
           onEdit={onEdit}
           onDelete={onDelete}
         />

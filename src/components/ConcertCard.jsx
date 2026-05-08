@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Ticket, Star, Check, Edit3, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Calendar, MapPin, Ticket, Star, Check, Edit3, Trash2, ChevronDown, ChevronUp, Music } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AttendingDayModal from './AttendingDayModal'
@@ -7,396 +7,372 @@ export default function ConcertCard({
   concert, 
   isOshi = false,
   isAttending = false,
-  attendingConcertIds = [],   // ← 추가: 전체 attending ID 배열 (양일 판단용)
+  attendingConcertIds = [],
   isAdmin = false,
   onToggleAttending,
-  onToggleAttendingDays,      // ← 추가: 양일공연 날짜별 처리 콜백
+  onToggleAttendingDays,
   onEdit,
   onDelete,
 }) {
   const navigate = useNavigate()
-  const handleCardClick = () => {
-    navigate(`/concerts/${concert.id}`)
-  }
   const [attendingLoading, setAttendingLoading] = useState(false)
   const [ticketsExpanded, setTicketsExpanded] = useState(false)
   const [showDayModal, setShowDayModal] = useState(false)
+  const [posterError, setPosterError] = useState(false)
   
-  const artist = concert.artist
+  // artists 배열 우선, 없으면 단일 artist fallback
+  const artists = concert.artists?.length > 0
+    ? concert.artists
+    : concert.artist ? [concert.artist] : []
+  const primaryArtist = artists[0]
+  const isMultiArtist = artists.length > 1
+
   const venue = concert.venue
-  const color = artist?.color || '#888'
+  // 컬러: 단일이면 그대로, 투맨이면 첫 번째 아티스트 컬러
+  const primaryColor = primaryArtist?.color || '#888'
+
   const ticketRounds = concert.ticket_rounds || []
+  const posterUrl = !posterError && concert.poster_url ? concert.poster_url : null
   
-  // D-day 계산
+  // D-day
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const concertDate = new Date(concert.date)
   concertDate.setHours(0, 0, 0, 0)
   const diffDays = Math.round((concertDate - today) / (1000 * 60 * 60 * 24))
-  
   let dDayLabel = ''
   let dDayUrgent = false
-  if (diffDays === 0) {
-    dDayLabel = 'D-DAY'
-    dDayUrgent = true
-  } else if (diffDays > 0) {
-    dDayLabel = `D-${diffDays}`
-    dDayUrgent = diffDays <= 7
-  } else {
-    dDayLabel = `D+${Math.abs(diffDays)}`
-  }
-  
-  // 양일공연: 몇 일 등록했는지 계산
+  if (diffDays === 0) { dDayLabel = 'D-DAY'; dDayUrgent = true }
+  else if (diffDays > 0) { dDayLabel = `D-${diffDays}`; dDayUrgent = diffDays <= 7 }
+  else { dDayLabel = `D+${Math.abs(diffDays)}` }
+
   const attendingDayCount = concert.is_series && concert.series_dates
     ? concert.series_dates.filter(d => attendingConcertIds.includes(d.id)).length
     : 0
   
-  // 티켓팅 분석
   const now = new Date()
   const upcomingRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) > now)
-  const pastRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) <= now)
   const pendingRounds = ticketRounds.filter(r => !r.open_at)
   const ongoingRounds = ticketRounds
-  .filter(r =>
-    r.open_at && new Date(r.open_at) <= now &&
-    r.close_at && new Date(r.close_at) > now
-  )
-  .sort((a, b) => new Date(b.open_at) - new Date(a.open_at)) // 가장 늦게 시작한 것 먼저
-const nextRound = ongoingRounds[0] || upcomingRounds[0] || pendingRounds[0]
+    .filter(r => r.open_at && new Date(r.open_at) <= now && r.close_at && new Date(r.close_at) > now)
+    .sort((a, b) => new Date(b.open_at) - new Date(a.open_at))
+  const nextRound = ongoingRounds[0] || upcomingRounds[0] || pendingRounds[0]
   
   const getCountdown = (openAt) => {
     if (!openAt) return '공개전'
-    const open = new Date(openAt)
-    const diff = open - now
-    if (diff < 0) return '오픈됨'
+    const diff = new Date(openAt) - now
+    if (diff < 0) return '진행중'
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     if (days > 0) return `D-${days}`
     if (hours > 0) return `${hours}시간 후`
     return '곧 오픈!'
   }
-  
   const isUrgent = (openAt) => {
     const diff = new Date(openAt) - now
-    const hours = diff / (1000 * 60 * 60)
-    return hours > 0 && hours <= 72
+    return diff > 0 && diff / (1000 * 60 * 60) <= 72
   }
+  const isOngoing = !!ongoingRounds[0]
   
   const countryLabel = concert.country === 'korea' ? '내한' : '원정'
-  const methodLabel = {
-    lottery: '추첨',
-    'first-come': '선착순',
-    fanclub: 'FC선예매',
-  }
+  const methodLabel = { lottery: '추첨', 'first-come': '선착순', fanclub: 'FC선예매' }
   
   const handleAttendingClick = async (e) => {
     e.stopPropagation()
     if (attendingLoading) return
-
-    // 양일 공연이면 날짜 선택 모달
-    if (concert.is_series && concert.series_dates?.length > 1) {
-      setShowDayModal(true)
-      return
-    }
-
-    // 단일 공연: 기존 토글
+    if (concert.is_series && concert.series_dates?.length > 1) { setShowDayModal(true); return }
     setAttendingLoading(true)
-    try {
-      await onToggleAttending(concert.id, isAttending)
-    } finally {
-      setAttendingLoading(false)
-    }
+    try { await onToggleAttending(concert.id, isAttending) }
+    finally { setAttendingLoading(false) }
   }
 
   const handleDayModalConfirm = async (toAdd, toRemove) => {
     setShowDayModal(false)
     if (!onToggleAttendingDays) return
     setAttendingLoading(true)
-    try {
-      await onToggleAttendingDays(toAdd, toRemove)
-    } finally {
-      setAttendingLoading(false)
-    }
+    try { await onToggleAttendingDays(toAdd, toRemove) }
+    finally { setAttendingLoading(false) }
   }
   
   return (
     <>
-      <div 
-        onClick={handleCardClick}
-        className="relative rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+      <div
+        onClick={() => navigate(`/concerts/${concert.id}`)}
+        className="group relative flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
       >
-        {/* 좌측 가수 컬러 바 */}
-        <div 
-          className="absolute left-0 top-0 bottom-0 w-1"
-          style={{ background: color }}
-        />
-        
-        {/* 우측 상단 글로우 */}
-        <div 
-          className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-15 pointer-events-none"
-          style={{ background: color }}
-        />
-        
-        <div className="relative p-5 pl-6">
+        {/* ── 이미지 영역 (3:4 세로형) ── */}
+        <div className="relative w-full overflow-hidden" style={{ paddingTop: '118%' }}>
           
-          {/* 상단: 라벨 + 액션 */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[10px] font-bold tracking-widest px-2 py-1 rounded ${
-                concert.country === 'korea' 
-                  ? 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300'
-                  : 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 dark:text-pink-300'
-              }`}>
-                {countryLabel}
-              </span>
-              
-              <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded ${
-                dDayUrgent
-                  ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400'
-                  : 'bg-stone-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
-              }`}>
-                {dDayLabel}
-              </span>
-              
-              {/* 양일 공연 라벨 */}
-              {concert.is_series && (
-                <span className="text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400">
-                  {concert.series_dates?.length || 2}일 공연
-                </span>
-              )}
-              {/* ⭐ 오시 라벨 */}
-              {isOshi && (
-                <span className="flex items-center gap-1 text-[10px] font-bold tracking-wider px-2 py-1 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
-                  <Star className="w-2.5 h-2.5" fill="currentColor" />
-                  오시
-                </span>
-              )}
-            </div>
-            
-            {/* 액션 버튼들 */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              {onToggleAttending && (
-                <button
-                  onClick={handleAttendingClick}
-                  disabled={attendingLoading}
-                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg transition ${
-                    isAttending
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                      : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-zinc-400'
-                  }`}
-                  title={isAttending ? '내 공연 해제' : '갈 거예요'}
-                >
-                  <Check className="w-3.5 h-3.5" strokeWidth={isAttending ? 3 : 2} />
-                  {/* 양일공연: 등록 일수 표시 */}
-                  {concert.is_series && attendingDayCount > 0 && (
-                    <span className="text-[10px] font-bold leading-none">
-                      {attendingDayCount}일
-                    </span>
-                  )}
-                </button>
-              )}
-              
-              {isAdmin && onEdit && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onEdit(concert) }}
-                  className="p-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 text-zinc-400"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
-              )}
-              {isAdmin && onDelete && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDelete(concert.id) }}
-                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-400 hover:text-red-500"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          {/* 가수명 */}
-          {artist && (
-            <div 
-              className="text-xs font-bold tracking-wider mb-1"
-              style={{ color }}
+          {posterUrl ? (
+            <img
+              src={posterUrl}
+              alt={concert.title}
+              onError={() => setPosterError(true)}
+              className="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500"
+            />
+          ) : (
+            <div
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${primaryColor}18 0%, ${primaryColor}06 100%)` }}
             >
-              {artist.name}
-              {artist.name_jp && <span className="opacity-60"> · {artist.name_jp}</span>}
+              {/* 투맨이면 두 아티스트 이니셜 표시 */}
+              {isMultiArtist ? (
+                <div className="flex items-center gap-2">
+                  {artists.slice(0, 2).map((a, i) => (
+                    <div key={a.id}>
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black text-white opacity-60"
+                        style={{ background: a.color || '#888' }}
+                      >
+                        {a.name.slice(0, 1)}
+                      </div>
+                      {i === 0 && (
+                        <span className="absolute text-[10px] text-zinc-400 font-black" style={{ left: '50%', transform: 'translateX(-50%)' }}>×</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Music className="w-10 h-10 opacity-20" style={{ color: primaryColor }} />
+              )}
             </div>
           )}
-          
+
+          {/* 하단 그라데이션 */}
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent" />
+
+          {/* 좌하단 배지 */}
+          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5">
+            <span className={`text-[9px] font-black tracking-wider px-2 py-0.5 rounded-full ${
+              concert.country === 'korea' ? 'bg-cyan-500 text-white' : 'bg-pink-500 text-white'
+            }`}>
+              {countryLabel}
+            </span>
+            <span className={`text-[9px] font-black tracking-wider px-2 py-0.5 rounded-full ${
+              dDayUrgent ? 'bg-red-500 text-white' : 'bg-black/50 text-white'
+            }`}>
+              {dDayLabel}
+            </span>
+            {concert.is_series && (
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-black/50 text-white">
+                {concert.series_dates?.length || 2}일
+              </span>
+            )}
+            {isMultiArtist && (
+              <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-500/80 text-white">
+                투맨
+              </span>
+            )}
+          </div>
+
+          {/* 우상단 액션 버튼 */}
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            {onToggleAttending && (
+              <button
+                onClick={handleAttendingClick}
+                disabled={attendingLoading}
+                className={`flex items-center gap-1 p-1.5 rounded-full backdrop-blur-sm transition-all ${
+                  isAttending ? 'bg-emerald-500 text-white shadow-md' : 'bg-black/30 text-white hover:bg-black/50'
+                }`}
+              >
+                <Check className="w-3.5 h-3.5" strokeWidth={isAttending ? 3 : 2} />
+                {concert.is_series && attendingDayCount > 0 && (
+                  <span className="text-[9px] font-bold pr-0.5">{attendingDayCount}일</span>
+                )}
+              </button>
+            )}
+            {isOshi && (
+              <div className="p-1.5 rounded-full bg-amber-400 shadow-md">
+                <Star className="w-3.5 h-3.5 text-white" fill="white" />
+              </div>
+            )}
+            {isAdmin && onEdit && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(concert) }}
+                className="p-1.5 rounded-full backdrop-blur-sm bg-black/30 text-white hover:bg-black/50 transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {isAdmin && onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(concert.id) }}
+                className="p-1.5 rounded-full backdrop-blur-sm bg-black/30 text-white hover:bg-red-500/90 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 아티스트 컬러 라인 — 투맨이면 두 색 분할 */}
+        <div className="h-[2px] w-full flex-shrink-0 flex">
+          {artists.slice(0, 2).map((a, i) => (
+            <div
+              key={a.id}
+              className="flex-1"
+              style={{
+                background: i === 0
+                  ? `linear-gradient(90deg, ${a.color || '#888'} 0%, ${a.color || '#888'}88 100%)`
+                  : `linear-gradient(90deg, ${a.color || '#888'}88 0%, ${a.color || '#888'} 100%)`,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* ── 텍스트 영역 ── */}
+        <div className="flex flex-col flex-1 px-2.5 pt-2 pb-2.5 gap-0.5">
+
+          {/* 가수명 — 투맨이면 두 명 표시 */}
+          {isMultiArtist ? (
+            <div className="flex items-center gap-1 flex-wrap">
+              {artists.map((a, i) => (
+                <span key={a.id}>
+                  <span className="text-[10px] font-bold tracking-wider" style={{ color: a.color || '#888' }}>
+                    {a.name}
+                  </span>
+                  {i < artists.length - 1 && (
+                    <span className="text-[10px] text-zinc-400 mx-1">×</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          ) : primaryArtist ? (
+            <p className="text-[10px] font-bold tracking-wider truncate" style={{ color: primaryColor }}>
+              {primaryArtist.name}
+              {primaryArtist.name_jp && (
+                <span className="opacity-50 font-normal"> · {primaryArtist.name_jp}</span>
+              )}
+            </p>
+          ) : null}
+
           {/* 공연 제목 */}
-          <h3 className="text-base font-bold mb-3 leading-snug text-zinc-900 dark:text-zinc-100">
+          <h3 className="text-[12px] font-bold leading-snug text-zinc-900 dark:text-zinc-100 line-clamp-2 mb-0.5">
             {concert.title}
           </h3>
-          
-          {/* 정보 라인 */}
-          <div className="space-y-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+
+          {/* 날짜 / 장소 */}
+          <div className="space-y-0.5 text-[10px] text-zinc-500 dark:text-zinc-400">
             {concert.is_series && concert.series_dates ? (
-              <div className="rounded-lg p-2 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900">
-                <div className="flex items-center gap-1 text-[10px] font-bold text-pink-600 dark:text-pink-400 mb-1">
-                  <Calendar className="w-3 h-3" />
-                  {concert.series_dates.length}일 공연
-                </div>
+              <div className="space-y-0.5">
                 {concert.series_dates.map((d) => (
-                  <div key={d.id} className="text-xs text-zinc-700 dark:text-zinc-300 py-0.5 flex items-center gap-2">
-                    <span className="font-bold text-pink-600 dark:text-pink-400 min-w-[40px]">
-                      {d.day_label || ''}
-                    </span>
-                    <span>
-                      {d.date}
-                      {d.time && ` · ${d.time.slice(0, 5)}`}
-                    </span>
-                    {/* 해당 날 등록됐으면 체크 표시 */}
+                  <div key={d.id} className="flex items-center gap-1.5">
+                    <span className="font-bold text-[9px] min-w-[28px]" style={{ color: primaryColor }}>{d.day_label}</span>
+                    <span className="truncate">{d.date}{d.time && ` · ${d.time.slice(0, 5)}`}</span>
                     {attendingConcertIds.includes(d.id) && (
-                      <span className="ml-auto text-emerald-500">
-                        <Check className="w-3 h-3" strokeWidth={3} />
-                      </span>
+                      <Check className="w-2.5 h-2.5 text-emerald-500 ml-auto flex-shrink-0" strokeWidth={3} />
                     )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
-                <span>
-                  {concert.date}
-                  {concert.time && ` · ${concert.time.slice(0, 5)}`}
-                </span>
+              <div className="flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+                <span className="truncate">{concert.date}{concert.time && ` · ${concert.time.slice(0, 5)}`}</span>
               </div>
             )}
-            
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-500 flex-shrink-0" />
-              <span>
+            <div className="flex items-center gap-1">
+              <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+              <span className="truncate">
                 {(venue?.name || concert.venue) || '미정'}
                 {(venue?.city || concert.city) && ` · ${venue?.city || concert.city}`}
               </span>
             </div>
           </div>
-          
-          {/* 티켓팅 */}
-          {ticketRounds.length > 0 && (
-            <div className="mt-3">
-              {nextRound && (
-                <div className={`p-3 rounded-lg mb-2 ${
-                  isUrgent(nextRound.open_at)
+
+          {/* 티켓팅 바 */}
+          {nextRound && (
+            <div className="mt-0.5">
+              <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] ${
+                isOngoing
+                  ? 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
+                  : isUrgent(nextRound.open_at)
                     ? 'bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900'
-                    : 'bg-stone-50 dark:bg-zinc-800/50'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    <Ticket className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
-                      isUrgent(nextRound.open_at) ? 'text-pink-500' : 'text-zinc-400'
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-bold ${
-                          isUrgent(nextRound.open_at) 
-                            ? 'text-pink-600 dark:text-pink-400' 
-                            : 'text-zinc-700 dark:text-zinc-300'
-                        }`}>
-                          {nextRound.round_name}
-                        </span>
-                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                          isUrgent(nextRound.open_at)
-                            ? 'bg-pink-100 dark:bg-pink-900/40 text-pink-700 dark:text-pink-300'
-                            : 'bg-stone-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400'
-                        }`}>
-                          {nextRound.open_at ? getCountdown(nextRound.open_at) : '공개전'}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
-                        {nextRound.open_at ? new Date(nextRound.open_at).toLocaleString('ko', { 
-                          month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                        }) : ''}
-                        {nextRound.method && ` · ${methodLabel[nextRound.method]}`}
-                        {nextRound.ticket_site && ` · ${nextRound.ticket_site}`}
-                      </div>
-                      {nextRound.ticket_url && (
-                        <a
-                          href={nextRound.ticket_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-bold text-pink-600 hover:underline"
-                        >
-                          🎟️ 티켓 예매하기
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {ticketRounds.length > (nextRound ? 1 : 0) && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setTicketsExpanded(!ticketsExpanded) }}
-                  className="w-full text-left text-[11px] text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 flex items-center gap-1 py-1"
-                >
-                  {ticketsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  <span>
-                    {nextRound 
-                      ? `다른 티켓팅 ${ticketRounds.length - 1}개 보기` 
-: `티켓팅 ${ticketRounds.length}개 보기`}
+                    : 'bg-stone-50 dark:bg-zinc-800/60 border border-stone-200 dark:border-zinc-700'
+              }`}>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Ticket className={`w-2.5 h-2.5 flex-shrink-0 ${
+                    isOngoing ? 'text-emerald-500'
+                    : isUrgent(nextRound.open_at) ? 'text-pink-500'
+                    : 'text-zinc-400'
+                  }`} />
+                  <span className={`font-bold truncate ${
+                    isOngoing ? 'text-emerald-700 dark:text-emerald-400'
+                    : isUrgent(nextRound.open_at) ? 'text-pink-600 dark:text-pink-400'
+                    : 'text-zinc-600 dark:text-zinc-300'
+                  }`}>
+                    {nextRound.round_name}
                   </span>
-                </button>
-              )}
-              
-              {ticketsExpanded && (
-                <div className="space-y-1.5 mt-2 pl-2 border-l-2 border-stone-200 dark:border-zinc-800">
-                  {ticketRounds.map((round) => {
-                    const isPast = new Date(round.open_at) <= now
-                    const isNext = round.id === nextRound?.id
-                    
-                    if (isNext) return null
-                    
-                    return (
-                      <div 
-                        key={round.id}
-                        className={`text-[11px] py-1.5 px-2 rounded ${
-                          isPast 
-                            ? 'text-zinc-400 dark:text-zinc-600 line-through' 
-                            : 'text-zinc-600 dark:text-zinc-400'
-                        }`}
-                      >
-                        <div className="font-semibold">
-                          {round.round_name}
-                          {isPast && <span className="ml-1 text-[10px] opacity-60">[종료]</span>}
-                        </div>
-                        <div className="text-[10px] mt-0.5">
-                          {round.open_at ? new Date(round.open_at).toLocaleString('ko', { 
-                            month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                          }) : ''}
-                          {round.close_at && ` ~ ${new Date(round.close_at).toLocaleString('ko', {
-                            month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                          })}`}
-                          {round.method && ` · ${methodLabel[round.method]}`}
-                          {round.ticket_site && ` · ${round.ticket_site}`}
-                        </div>
-                        {round.note && (
-                          <div className="text-[10px] italic opacity-70 mt-0.5">
-                            {round.note}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
                 </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={`font-mono font-bold text-[9px] px-1.5 py-0.5 rounded-full ${
+                    isOngoing
+                      ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                      : isUrgent(nextRound.open_at)
+                        ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'
+                        : 'bg-stone-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                  }`}>
+                    {nextRound.open_at ? getCountdown(nextRound.open_at) : '공개전'}
+                  </span>
+                  {nextRound.ticket_url && (
+                    <a
+                      href={nextRound.ticket_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-bold text-pink-500 hover:text-pink-700 text-[9px]"
+                    >
+                      예매 →
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {ticketRounds.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setTicketsExpanded(!ticketsExpanded) }}
+                    className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 pt-1 pl-0.5"
+                  >
+                    {ticketsExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                    {ticketsExpanded ? '접기' : `+${ticketRounds.length - 1}개 더`}
+                  </button>
+                  {ticketsExpanded && (
+                    <div className="mt-1 space-y-1 pl-1 border-l-2 border-stone-100 dark:border-zinc-800">
+                      {ticketRounds.map((round) => {
+                        const isPast = round.open_at && new Date(round.open_at) <= now
+                          && (!round.close_at || new Date(round.close_at) <= now)
+                        if (round.id === nextRound?.id) return null
+                        return (
+                          <div key={round.id} className={`text-[10px] px-2 py-1 rounded-lg ${
+                            isPast ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-600 dark:text-zinc-400'
+                          }`}>
+                            <span className={isPast ? 'line-through' : 'font-semibold'}>{round.round_name}</span>
+                            {isPast && <span className="ml-1 opacity-50 text-[9px]">[종료]</span>}
+                            <div className="text-[9px] mt-0.5 opacity-70">
+                              {round.open_at ? new Date(round.open_at).toLocaleString('ko', {
+                                month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                              }) : ''}
+                              {round.method && ` · ${methodLabel[round.method]}`}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
-          
-          {/* 메모 */}
+
           {concert.memo && (
-            <div className="mt-3 pt-3 border-t border-stone-100 dark:border-zinc-800 text-xs text-zinc-500 dark:text-zinc-400 italic">
+            <p className="mt-1 text-[10px] text-zinc-400 dark:text-zinc-500 italic line-clamp-1">
               {concert.memo}
-            </div>
+            </p>
           )}
         </div>
       </div>
 
-      {/* 양일공연 날짜 선택 모달 */}
       {showDayModal && (
         <AttendingDayModal
           concert={concert}

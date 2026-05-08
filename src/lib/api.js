@@ -155,6 +155,23 @@ function groupBySeries(data) {
     )
     allTicketRounds.sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
 
+    // 여러 아티스트 병합 (concert_artists 기준)
+    const allArtists = []
+    const artistIds = new Set()
+    sortedByDate.forEach(c => {
+      ;(c.concert_artists || []).forEach(ca => {
+        if (ca.artists && !artistIds.has(ca.artists.id)) {
+          artistIds.add(ca.artists.id)
+          allArtists.push(ca.artists)
+        }
+      })
+      // concert_artists 없으면 기본 artist fallback
+      if (allArtists.length === 0 && c.artist && !artistIds.has(c.artist.id)) {
+        artistIds.add(c.artist.id)
+        allArtists.push(c.artist)
+      }
+    })
+
     seriesGrouped.push({
       ...first,
       is_series: true,
@@ -165,6 +182,7 @@ function groupBySeries(data) {
         day_label: c.day_label,
       })),
       ticket_rounds: allTicketRounds,
+      artists: allArtists.length > 0 ? allArtists : (first.artist ? [first.artist] : []),
       id: first.id,
     })
   })
@@ -172,6 +190,16 @@ function groupBySeries(data) {
   const all = [...standalone, ...seriesGrouped]
   all.sort((a, b) => new Date(a.date) - new Date(b.date))
   return all
+}
+
+// concert_artists 데이터에서 artists 배열 추출 헬퍼
+function extractArtists(concert) {
+  const fromJoin = (concert.concert_artists || [])
+    .map(ca => ca.artists)
+    .filter(Boolean)
+  if (fromJoin.length > 0) return fromJoin
+  if (concert.artist) return [concert.artist]
+  return []
 }
 
 // ============================================
@@ -185,15 +213,16 @@ export async function fetchConcerts() {
       *,
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(*)
+      ticket_rounds(*),
+      concert_artists(artists(*))
     `)
     .order('date', { ascending: true })
   
   if (error) throw error
   
-  // ticket_rounds 정렬
   const sorted = (data || []).map(concert => ({
     ...concert,
+    artists: extractArtists(concert),
     ticket_rounds: (concert.ticket_rounds || []).sort(
       (a, b) => (a.display_order || 0) - (b.display_order || 0)
     )
@@ -209,7 +238,8 @@ export async function fetchConcert(id) {
       *, 
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(*)
+      ticket_rounds(*),
+      concert_artists(artists(*))
     `)
     .eq('id', id)
     .single()
@@ -221,6 +251,7 @@ export async function fetchConcert(id) {
       (a, b) => (a.display_order || 0) - (b.display_order || 0)
     )
   }
+  data.artists = extractArtists(data)
   
   return data
 }
@@ -268,6 +299,30 @@ export async function deleteConcert(id) {
       .eq('id', id)
     if (error) throw error
   }
+}
+
+// ============================================
+// concert_artists 관리
+// ============================================
+
+export async function updateConcertArtists(concertId, artistIds) {
+  // 기존 삭제
+  await supabase.from('concert_artists').delete().eq('concert_id', concertId)
+  
+  if (artistIds && artistIds.length > 0) {
+    const rows = artistIds.map(artist_id => ({ concert_id: concertId, artist_id }))
+    const { error } = await supabase.from('concert_artists').insert(rows)
+    if (error) throw error
+  }
+}
+
+export async function fetchConcertArtists(concertId) {
+  const { data, error } = await supabase
+    .from('concert_artists')
+    .select('artists(*)')
+    .eq('concert_id', concertId)
+  if (error) throw error
+  return (data || []).map(ca => ca.artists).filter(Boolean)
 }
 
 // ============================================
@@ -456,7 +511,8 @@ export async function fetchConcertById(concertId) {
       *,
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(id, concert_id, round_name, open_at, close_at, result_at, method, ticket_site, price_info, note, display_order, ticket_url)
+      ticket_rounds(id, concert_id, round_name, open_at, close_at, result_at, method, ticket_site, price_info, note, display_order, ticket_url),
+      concert_artists(artists(*))
     `)
     .eq('id', concertId)
     .single()
@@ -466,12 +522,12 @@ export async function fetchConcertById(concertId) {
   if (data.ticket_rounds) {
     data.ticket_rounds.sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
   }
+  data.artists = extractArtists(data)
   
-  // 시리즈 공연이면 나머지 날짜 + ticket_rounds도 가져오기
   if (data.series_id) {
     const { data: siblings } = await supabase
       .from('concerts')
-      .select(`*, ticket_rounds(*)`)
+      .select(`*, ticket_rounds(*), concert_artists(artists(*))`)
       .eq('series_id', data.series_id)
       .neq('id', concertId)
       .order('date', { ascending: true })
@@ -493,10 +549,24 @@ export async function fetchConcertById(concertId) {
         ...data.ticket_rounds.map(r => ({ ...r, _concert_date: data.date })),
         ...siblingRounds,
       ].sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+
+      // 모든 아티스트 병합
+      const artistIds = new Set()
+      const allArtists = []
+      ;[data, ...siblings].forEach(c => {
+        ;(c.concert_artists || []).forEach(ca => {
+          if (ca.artists && !artistIds.has(ca.artists.id)) {
+            artistIds.add(ca.artists.id)
+            allArtists.push(ca.artists)
+          }
+        })
+      })
+      if (allArtists.length === 0 && data.artist) allArtists.push(data.artist)
       
       data.is_series = true
       data.series_dates = allDates
       data.ticket_rounds = allRounds
+      data.artists = allArtists
     }
   }
   
@@ -525,7 +595,7 @@ export async function fetchVenueById(venueId) {
 export async function fetchConcertsByVenue(venueId) {
   const { data, error } = await supabase
     .from('concerts')
-    .select('*, artist:artists(*), ticket_rounds(*)')
+    .select('*, artist:artists(*), ticket_rounds(*), concert_artists(artists(*))')
     .eq('venue_id', venueId)
     .order('date', { ascending: true })
   
@@ -533,6 +603,7 @@ export async function fetchConcertsByVenue(venueId) {
 
   const sorted = (data || []).map(concert => ({
     ...concert,
+    artists: extractArtists(concert),
     ticket_rounds: (concert.ticket_rounds || []).sort(
       (a, b) => (a.display_order || 0) - (b.display_order || 0)
     )
@@ -600,22 +671,22 @@ export async function fetchConcertsByArtist(artistId) {
       *,
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(*)
+      ticket_rounds(*),
+      concert_artists(artists(*))
     `)
     .eq('artist_id', artistId)
     .order('date', { ascending: true })
   
   if (error) throw error
   
-  // ticket_rounds 정렬
   const sorted = (data || []).map(concert => ({
     ...concert,
+    artists: extractArtists(concert),
     ticket_rounds: (concert.ticket_rounds || []).sort(
       (a, b) => (a.display_order || 0) - (b.display_order || 0)
     )
   }))
 
-  // series 묶기 (fetchConcerts와 동일)
   return groupBySeries(sorted)
 }
 
@@ -784,6 +855,9 @@ export async function approveSubmissionFull(submissionId, finalData, rounds, rev
     .single()
   
   if (concertError) throw concertError
+
+  // concert_artists에도 등록
+  await supabase.from('concert_artists').insert({ concert_id: newConcert.id, artist_id: artistId })
   
   if (rounds && rounds.length > 0) {
     const roundsPayload = rounds.map((r, idx) => ({
@@ -855,7 +929,8 @@ export async function fetchConcertSeries(seriesId) {
       *,
       artist:artists(*),
       venue:venues(*),
-      ticket_rounds(*)
+      ticket_rounds(*),
+      concert_artists(artists(*))
     `)
     .eq('series_id', seriesId)
     .order('date', { ascending: true })
@@ -864,6 +939,7 @@ export async function fetchConcertSeries(seriesId) {
   
   return (data || []).map(concert => ({
     ...concert,
+    artists: extractArtists(concert),
     ticket_rounds: (concert.ticket_rounds || []).sort(
       (a, b) => (a.display_order || 0) - (b.display_order || 0)
     )
@@ -970,8 +1046,9 @@ export async function fetchMyArtistSubmissions(userId) {
   if (error) throw error
   return data || []
 }
+
 // ============================================
-// FESTIVALS (페스티벌) - api.js 맨 아래에 추가
+// FESTIVALS (페스티벌)
 // ============================================
 
 export async function fetchFestivals() {
@@ -1004,7 +1081,6 @@ export async function fetchPendingFestivalSubmissions() {
     .order('created_at', { ascending: true })
   if (error) throw error
 
-  // 제보자 닉네임
   if (data && data.length > 0) {
     const userIds = [...new Set(data.map(s => s.submitted_by).filter(Boolean))]
     if (userIds.length > 0) {
@@ -1029,7 +1105,6 @@ export async function approveFestivalSubmission(submissionId, reviewerId) {
   if (!sub) throw new Error('제보를 찾을 수 없어요')
 
   if (sub.festival_id) {
-    // 기존 페스티벌에 아티스트 추가
     if (sub.artists && sub.artists.length > 0) {
       const rows = sub.artists.map(a => ({
         festival_id: sub.festival_id,
@@ -1038,7 +1113,6 @@ export async function approveFestivalSubmission(submissionId, reviewerId) {
       await supabase.from('festival_artists').upsert(rows, { onConflict: 'festival_id,artist_id' })
     }
   } else {
-    // 새 페스티벌 등록
     const { data: newFest, error: festError } = await supabase
       .from('festivals')
       .insert({
@@ -1057,7 +1131,6 @@ export async function approveFestivalSubmission(submissionId, reviewerId) {
       .single()
     if (festError) throw festError
 
-    // 아티스트 연결
     if (sub.artists && sub.artists.length > 0) {
       const rows = sub.artists.map(a => ({
         festival_id: newFest.id,
@@ -1067,7 +1140,6 @@ export async function approveFestivalSubmission(submissionId, reviewerId) {
     }
   }
 
-  // 상태 업데이트
   await supabase
     .from('festival_submissions')
     .update({ status: 'approved', reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })

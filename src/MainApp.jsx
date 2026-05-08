@@ -393,8 +393,6 @@ export default function MainApp({ session, theme, onThemeChange }) {
                 }
               }}
               onAdd={() => setAddVenueOpen(true)}
-              country={country}
-              onCountryChange={setCountry}
             />
           )}
 

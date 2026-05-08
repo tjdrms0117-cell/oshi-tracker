@@ -24,6 +24,7 @@ export default function ConcertDetail({ session }) {
   const [oshiLoading, setOshiLoading] = useState(false)
   const [attendingLoading, setAttendingLoading] = useState(false)
   const [showDayModal, setShowDayModal] = useState(false)
+  const [posterError, setPosterError] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -167,6 +168,7 @@ export default function ConcertDetail({ session }) {
   const venue = concert.venue
   const color = artist?.color || '#888'
   const ticketRounds = concert.ticket_rounds || []
+  const posterUrl = !posterError && concert.poster_url ? concert.poster_url : null
 
   // 티켓팅 상태 분류
   const now = new Date()
@@ -175,11 +177,10 @@ export default function ConcertDetail({ session }) {
     const openAt = new Date(round.open_at)
     const closeAt = round.close_at ? new Date(round.close_at) : null
     if (openAt > now) return 'upcoming'
-    if (closeAt && closeAt > now) return 'ongoing' // 진행중
+    if (closeAt && closeAt > now) return 'ongoing'
     return 'past'
   }
 
-  // 진행중 → 예정 → 미공개 → 종료 순으로 정렬
   const sortedRounds = [...ticketRounds].sort((a, b) => {
     const order = { ongoing: 0, upcoming: 1, pending: 2, past: 3 }
     return order[getRoundStatus(a)] - order[getRoundStatus(b)]
@@ -214,71 +215,105 @@ export default function ConcertDetail({ session }) {
     <>
       <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 transition-colors">
         
-        <div 
-          className="relative pb-8"
-          style={{ background: `linear-gradient(180deg, ${color}25 0%, transparent 100%)` }}
-        >
-          <div className="px-5 pt-5 pb-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              뒤로
-            </button>
+        {/* 포스터 히어로 (있을 때) */}
+        {posterUrl ? (
+          <div className="relative w-full" style={{ maxHeight: '420px', overflow: 'hidden' }}>
+            <img
+              src={posterUrl}
+              alt={concert.title}
+              onError={() => setPosterError(true)}
+              className="w-full object-cover object-top"
+              style={{ maxHeight: '420px' }}
+            />
+            {/* 하단 페이드 */}
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(to bottom, transparent 40%, var(--tw-gradient-to, #fafaf9) 100%)`,
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stone-50 dark:to-zinc-950" />
+            {/* 뒤로가기 버튼 (포스터 위) */}
+            <div className="absolute top-5 left-5">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm font-semibold text-white bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-black/50 transition"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                뒤로
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* 포스터 없을 때 기존 그라데이션 헤더 */
+          <div 
+            className="relative pb-8"
+            style={{ background: `linear-gradient(180deg, ${color}25 0%, transparent 100%)` }}
+          >
+            <div className="px-5 pt-5 pb-3">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                뒤로
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-3xl mx-auto px-5 pt-4">
+          {/* 포스터 있을 때는 여기서 뒤로가기 없음 (위에서 처리) */}
+          
+          <div className="flex items-center gap-2 mb-3">
+            <span className={`text-[10px] font-bold tracking-widest px-2 py-1 rounded ${
+              concert.country === 'korea' 
+                ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300'
+                : 'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300'
+            }`}>
+              {countryLabel}
+            </span>
+            <span className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+              {dDayLabel}
+            </span>
           </div>
 
-          <div className="max-w-3xl mx-auto px-5 pt-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className={`text-[10px] font-bold tracking-widest px-2 py-1 rounded ${
-                concert.country === 'korea' 
-                  ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300'
-                  : 'bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300'
-              }`}>
-                {countryLabel}
-              </span>
-              <span className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                {dDayLabel}
-              </span>
-            </div>
+          <div className="text-sm font-bold tracking-wider mb-2" style={{ color }}>
+            {artist?.name}
+            {artist?.name_jp && <span className="opacity-60"> · {artist.name_jp}</span>}
+          </div>
 
-            <div className="text-sm font-bold tracking-wider mb-2" style={{ color }}>
-              {artist?.name}
-              {artist?.name_jp && <span className="opacity-60"> · {artist.name_jp}</span>}
-            </div>
+          <h1 className="text-2xl font-black mb-6 leading-tight text-zinc-900 dark:text-zinc-100">
+            {concert.title}
+          </h1>
 
-            <h1 className="text-2xl font-black mb-6 leading-tight text-zinc-900 dark:text-zinc-100">
-              {concert.title}
-            </h1>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleAttendingClick}
-                disabled={attendingLoading}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
-                  isAttending
-                    ? 'bg-emerald-500 text-white shadow-md'
-                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                {isAttending
-                  ? (attendingDayCount > 1 ? `내 공연 (${attendingDayCount}일)` : '내 공연 등록됨')
-                  : '갈 거예요'}
-              </button>
-              <button
-                onClick={handleToggleOshi}
-                disabled={oshiLoading}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
-                  isOshi
-                    ? 'bg-amber-400 text-amber-950 shadow-md'
-                    : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
-                }`}
-              >
-                <Star className="w-4 h-4" fill={isOshi ? 'currentColor' : 'none'} />
-                {isOshi ? '내 오시' : '오시 등록'}
-              </button>
-            </div>
+          <div className="flex gap-2 mb-8">
+            <button
+              onClick={handleAttendingClick}
+              disabled={attendingLoading}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
+                isAttending
+                  ? 'bg-emerald-500 text-white shadow-md'
+                  : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              {isAttending
+                ? (attendingDayCount > 1 ? `내 공연 (${attendingDayCount}일)` : '내 공연 등록됨')
+                : '갈 거예요'}
+            </button>
+            <button
+              onClick={handleToggleOshi}
+              disabled={oshiLoading}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
+                isOshi
+                  ? 'bg-amber-400 text-amber-950 shadow-md'
+                  : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+              }`}
+            >
+              <Star className="w-4 h-4" fill={isOshi ? 'currentColor' : 'none'} />
+              {isOshi ? '내 오시' : '오시 등록'}
+            </button>
           </div>
         </div>
 
