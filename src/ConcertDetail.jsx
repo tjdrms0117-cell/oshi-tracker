@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, Calendar, MapPin, Ticket, Star, Check, 
-  Clock, Train, Car, Lightbulb, Music, ExternalLink, Users
+  Clock, Train, Car, Lightbulb, Music, ExternalLink, Users, Building2
 } from 'lucide-react'
 import { 
   fetchConcertById,
@@ -225,7 +225,6 @@ export default function ConcertDetail({ session }) {
               className="w-full object-cover object-top"
               style={{ maxHeight: '420px' }}
             />
-            {/* 하단 페이드 */}
             <div
               className="absolute inset-0"
               style={{
@@ -233,7 +232,6 @@ export default function ConcertDetail({ session }) {
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stone-50 dark:to-zinc-950" />
-            {/* 뒤로가기 버튼 (포스터 위) */}
             <div className="absolute top-5 left-5">
               <button
                 onClick={() => navigate(-1)}
@@ -245,7 +243,6 @@ export default function ConcertDetail({ session }) {
             </div>
           </div>
         ) : (
-          /* 포스터 없을 때 기존 그라데이션 헤더 */
           <div 
             className="relative pb-8"
             style={{ background: `linear-gradient(180deg, ${color}25 0%, transparent 100%)` }}
@@ -263,8 +260,6 @@ export default function ConcertDetail({ session }) {
         )}
 
         <div className="max-w-3xl mx-auto px-5 pt-4">
-          {/* 포스터 있을 때는 여기서 뒤로가기 없음 (위에서 처리) */}
-          
           <div className="flex items-center gap-2 mb-3">
             <span className={`text-[10px] font-bold tracking-widest px-2 py-1 rounded ${
               concert.country === 'korea' 
@@ -276,6 +271,11 @@ export default function ConcertDetail({ session }) {
             <span className="text-[10px] font-mono font-bold px-2 py-1 rounded bg-stone-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
               {dDayLabel}
             </span>
+            {concert.max_tickets_per_person && (
+              <span className="text-[10px] font-bold px-2 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                1인 {concert.max_tickets_per_person}매
+              </span>
+            )}
           </div>
 
           <div className="text-sm font-bold tracking-wider mb-2" style={{ color }}>
@@ -354,9 +354,15 @@ export default function ConcertDetail({ session }) {
               )}
               {concert.seat_type && <InfoRow label="좌석">{concert.seat_type}</InfoRow>}
               {concert.ticket_price && <InfoRow label="가격">{concert.ticket_price}</InfoRow>}
+              {concert.max_tickets_per_person && (
+                <InfoRow label="매수 제한">1인 {concert.max_tickets_per_person}매</InfoRow>
+              )}
+              {concert.organizer && (
+                <InfoRow icon={Building2} label="주최">{concert.organizer}</InfoRow>
+              )}
               {concert.memo && (
                 <InfoRow label="메모">
-                  <span className="text-zinc-600 dark:text-zinc-400 italic">{concert.memo}</span>
+                  <span className="text-pink-600 dark:text-pink-400 font-semibold">⭐ {concert.memo}</span>
                 </InfoRow>
               )}
             </div>

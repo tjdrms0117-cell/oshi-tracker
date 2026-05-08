@@ -185,30 +185,38 @@ export default function ConcertCard({
             {concert.title}
           </h3>
 
-          {/* 날짜 / 장소 */}
-          <div className="space-y-0.5 text-[9px] text-zinc-500 dark:text-zinc-400">
-            {concert.is_series && concert.series_dates ? (
-              <div className="space-y-0.5">
-                {concert.series_dates.map((d) => (
-                  <div key={d.id} className="flex items-center gap-1">
-                    <span className="font-bold text-[8px] min-w-[22px]" style={{ color }}>{d.day_label}</span>
-                    <span className="truncate">{d.date.slice(5)}{d.time && ` · ${d.time.slice(0, 5)}`}</span>
-                    {attendingConcertIds.includes(d.id) && (
-                      <Check className="w-2 h-2 text-emerald-500 ml-auto" strokeWidth={3} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
+          {/* 날짜 / 장소 + 매수제한 */}
+          <div className="flex items-end gap-1">
+            <div className="flex-1 min-w-0 space-y-0.5 text-[9px] text-zinc-500 dark:text-zinc-400">
+              {concert.is_series && concert.series_dates ? (
+                <div className="space-y-0.5">
+                  {concert.series_dates.map((d) => (
+                    <div key={d.id} className="flex items-center gap-1">
+                      <span className="font-bold text-[8px] min-w-[22px]" style={{ color }}>{d.day_label || ''}</span>
+                      <span className="truncate">{d.date.slice(5)}{d.time && ` · ${d.time.slice(0, 5)}`}</span>
+                      {attendingConcertIds.includes(d.id) && (
+                        <Check className="w-2 h-2 text-emerald-500 ml-auto" strokeWidth={3} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+                  <span className="truncate">{concert.date}{concert.time && ` · ${concert.time.slice(0, 5)}`}</span>
+                </div>
+              )}
               <div className="flex items-center gap-1">
-                <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
-                <span className="truncate">{concert.date}{concert.time && ` · ${concert.time.slice(0, 5)}`}</span>
+                <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+                <span className="truncate">{(venue?.name || concert.venue) || '미정'}</span>
+              </div>
+            </div>
+            {/* 매수제한 우측 정렬 */}
+            {concert.max_tickets_per_person && (
+              <div className="flex-shrink-0 px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-[9px] font-bold text-zinc-600 dark:text-zinc-300">
+                1인 {concert.max_tickets_per_person}매
               </div>
             )}
-            <div className="flex items-center gap-1">
-              <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
-              <span className="truncate">{(venue?.name || concert.venue) || '미정'}</span>
-            </div>
           </div>
 
           {/* 티켓팅 바 (간소화) */}
@@ -235,15 +243,28 @@ export default function ConcertCard({
                     {nextRound.round_name}
                   </span>
                 </div>
-                <span className={`font-mono font-bold text-[8px] px-1 py-0.5 rounded flex-shrink-0 ${
-                  isOngoing
-                    ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                    : isUrgent(nextRound.open_at)
-                      ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'
-                      : 'bg-stone-200 dark:bg-zinc-700 text-zinc-500'
-                }`}>
-                  {nextRound.open_at ? getCountdown(nextRound.open_at) : '공개전'}
-                </span>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <span className={`font-mono font-bold text-[8px] px-1 py-0.5 rounded ${
+                    isOngoing
+                      ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                      : isUrgent(nextRound.open_at)
+                        ? 'bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300'
+                        : 'bg-stone-200 dark:bg-zinc-700 text-zinc-500'
+                  }`}>
+                    {nextRound.open_at ? getCountdown(nextRound.open_at) : '공개전'}
+                  </span>
+                  {nextRound.ticket_url && (
+                    <a
+                      href={nextRound.ticket_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="font-bold text-pink-500 hover:text-pink-700 text-[8px]"
+                    >
+                      예매→
+                    </a>
+                  )}
+                </div>
               </div>
 
               {ticketRounds.length > 1 && (
@@ -256,21 +277,48 @@ export default function ConcertCard({
                 </button>
               )}
               {ticketsExpanded && ticketRounds.length > 1 && (
-                <div className="mt-1 space-y-0.5 pl-1 border-l border-stone-200 dark:border-zinc-800">
+                <div className="mt-1 space-y-1 pl-1 border-l-2 border-stone-100 dark:border-zinc-800">
                   {ticketRounds.map((round) => {
                     if (round.id === nextRound?.id) return null
                     const isPast = round.open_at && new Date(round.open_at) <= now
                       && (!round.close_at || new Date(round.close_at) <= now)
+                    const methodLabel = { lottery: '추첨', 'first-come': '선착순', fanclub: 'FC선예매' }
                     return (
-                      <div key={round.id} className={`text-[8px] px-1 ${
-                        isPast ? 'text-zinc-400 dark:text-zinc-600 line-through' : 'text-zinc-600 dark:text-zinc-400'
-                      }`}>
-                        {round.round_name}
+                      <div
+                        key={round.id}
+                        className={`text-[9px] px-1.5 py-1 rounded ${
+                          isPast ? 'text-zinc-400 dark:text-zinc-600' : 'text-zinc-600 dark:text-zinc-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1">
+                          <span className={isPast ? 'line-through' : 'font-semibold'}>
+                            {round.round_name}
+                          </span>
+                          {isPast && <span className="opacity-50 text-[8px]">[종료]</span>}
+                        </div>
+                        <div className="text-[8px] mt-0.5 opacity-70">
+                          {round.open_at
+                            ? new Date(round.open_at).toLocaleString('ko', {
+                                month: 'numeric', day: 'numeric',
+                                hour: '2-digit', minute: '2-digit',
+                              })
+                            : ''}
+                          {round.method && ` · ${methodLabel[round.method] || round.method}`}
+                        </div>
                       </div>
                     )
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 메모 (VIP/특전 등 짧은 정보) */}
+          {concert.memo && (
+            <div className="mt-1">
+              <p className="text-[9px] text-pink-600 dark:text-pink-400 font-semibold leading-snug line-clamp-2">
+                ⭐ {concert.memo}
+              </p>
             </div>
           )}
         </div>

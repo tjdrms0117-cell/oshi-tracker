@@ -49,6 +49,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: c.memo || '',
         source_url: c.source_url || '',
         poster_url: c.poster_url || '',
+        organizer: c.organizer || '',
+        max_tickets_per_person: c.max_tickets_per_person || '',
       })
       setPosterPreview(c.poster_url || '')
       setEditedRounds((c.ticket_rounds || [])
@@ -147,6 +149,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         memo: editedData.memo || null,
         source_url: editedData.source_url || null,
         poster_url: editedData.poster_url || null,
+        organizer: editedData.organizer || null,
+        max_tickets_per_person: editedData.max_tickets_per_person ? parseInt(editedData.max_tickets_per_person) : null,
       })
 
       if (day2Concert) {
@@ -264,7 +268,11 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
                 <Input label="좌석" value={editedData.seat_type} onChange={v => setEditedData({...editedData, seat_type: v})} />
               </div>
               <Input label="가격" value={editedData.ticket_price} onChange={v => setEditedData({...editedData, ticket_price: v})} />
-              <Input label="메모" value={editedData.memo} onChange={v => setEditedData({...editedData, memo: v})} />
+              <div className="grid grid-cols-2 gap-2">
+                <Input label="주최사" value={editedData.organizer} onChange={v => setEditedData({...editedData, organizer: v})} placeholder="(주)이릴레반트" />
+                <Input label="1인 매수 제한" type="number" value={editedData.max_tickets_per_person} onChange={v => setEditedData({...editedData, max_tickets_per_person: v})} placeholder="2" />
+              </div>
+              <Input label="메모 (VIP 특전, 게스트 등 짧게)" value={editedData.memo} onChange={v => setEditedData({...editedData, memo: v})} placeholder="VIP특전 친필사인 포스터" />
               <Input label="출처 URL" value={editedData.source_url} onChange={v => setEditedData({...editedData, source_url: v})} />
             </div>
           </Section>
