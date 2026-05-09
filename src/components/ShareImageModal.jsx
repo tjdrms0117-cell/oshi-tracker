@@ -74,21 +74,29 @@ export default function ShareImageModal({
   const generateImage = async () => {
   if (!cardRef.current) return null
   
-  // 카드 안의 모든 이미지 URL 수집
-  const imgs = cardRef.current.querySelectorAll('img')
-  const urls = Array.from(imgs).map(img => img.src).filter(Boolean)
+  try {
+    // 카드 안의 모든 이미지 URL 수집
+    const imgs = cardRef.current.querySelectorAll('img')
+    const urls = Array.from(imgs).map(img => img.src).filter(Boolean)
+    
+    // 모든 이미지 로드 대기 (실패해도 계속 진행)
+    if (urls.length > 0) {
+      await preloadImages(urls).catch(err => {
+        console.warn('일부 이미지 preload 실패:', err)
+      })
+    }
+    
+    // 추가 안전장치: 페인트 대기
+    await new Promise(r => setTimeout(r, 300))
+  } catch (err) {
+    console.warn('preload 단계 에러:', err)
+  }
   
-  // 모든 이미지 로드 대기
-  await preloadImages(urls)
-  
-  // 추가 안전장치: 200ms 더 기다리기 (DOM 페인트)
-  await new Promise(r => setTimeout(r, 200))
-  
+  // 실제 캡처
   return await toPng(cardRef.current, {
     pixelRatio: 2,
     cacheBust: true,
     backgroundColor: '#0f0a1f',
-    fetchRequestInit: { mode: 'cors' },
   })
 }
   
@@ -120,11 +128,11 @@ export default function ShareImageModal({
     link.href = dataUrl
     link.click()
   } catch (err) {
-    if (err.name !== 'AbortError') {
-      console.error('이미지 저장 실패:', err)
-      alert('이미지 저장에 실패했어요. 다시 시도해주세요.')
-    }
-  } finally {
+  if (err.name !== 'AbortError') {
+    console.error('이미지 저장 실패:', err)
+    alert('이미지 저장에 실패했어요\n\n에러: ' + (err.message || err.name || '알 수 없음'))
+  }
+} finally {
     setGenerating(false)
   }
 }
@@ -152,11 +160,11 @@ export default function ShareImageModal({
         handleDownload()
       }
     } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('공유 실패:', err)
-        alert('공유에 실패했어요. 다운로드해서 직접 공유해주세요.')
-      }
-    } finally {
+  if (err.name !== 'AbortError') {
+    console.error('공유 실패:', err)
+    alert('공유에 실패했어요\n\n에러: ' + (err.message || err.name || '알 수 없음'))
+  }
+} finally {
       setGenerating(false)
     }
   }
