@@ -26,7 +26,7 @@ export default function SubmitConcert({ session }) {
   const navigate = useNavigate()
 
   const [step, setStep] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('submit_step') || '"0"') } catch { return 0 }
+    try { return JSON.parse(localStorage.getItem('submit_step') || '0') } catch { return 0 }
   })
   const [artists, setArtists] = useState([])
   const [submissions, setSubmissions] = useState([])
