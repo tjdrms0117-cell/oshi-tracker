@@ -14,7 +14,34 @@ export default function ArtistList({
 }) {
   const [editArtist, setEditArtist] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filterMode, setFilterMode] = useState('all') // all | oshi
+  const [filterMode, setFilterMode] = useState('all') // all | oshi | upcoming
+  const [subFilter, setSubFilter] = useState('all') // all | kr | jp | festival
+  
+  // 아티스트가 공연/페스가 예정되어 있는지
+  const hasUpcoming = (artist, type = 'all') => {
+    const fests = artist.upcoming_festivals || []
+    if (type === 'kr') {
+      return (artist.upcoming_kr || 0) > 0 || fests.some(f => f.country === 'korea')
+    }
+    if (type === 'jp') {
+      return (artist.upcoming_jp || 0) > 0 || fests.some(f => f.country === 'japan')
+    }
+    if (type === 'festival') {
+      return fests.length > 0
+    }
+    // all
+    return (artist.upcoming_concerts || 0) > 0 || fests.length > 0
+  }
+  
+  // 카운트 (서브 필터 버튼에 표시)
+  const counts = useMemo(() => {
+    return {
+      upcoming: artists.filter(a => hasUpcoming(a)).length,
+      kr: artists.filter(a => hasUpcoming(a, 'kr')).length,
+      jp: artists.filter(a => hasUpcoming(a, 'jp')).length,
+      festival: artists.filter(a => hasUpcoming(a, 'festival')).length,
+    }
+  }, [artists])
   
   // 검색 + 필터링
   const filteredArtists = useMemo(() => {
@@ -29,9 +56,11 @@ export default function ArtistList({
       )
     }
     
-    // 오시만 보기
+    // 메인 필터
     if (filterMode === 'oshi') {
       filtered = filtered.filter(a => oshiArtistIds.includes(a.id))
+    } else if (filterMode === 'upcoming') {
+      filtered = filtered.filter(a => hasUpcoming(a, subFilter))
     }
     
     // 정렬: 오시 먼저, 그 다음 이름순
@@ -43,7 +72,14 @@ export default function ArtistList({
     })
     
     return filtered
-  }, [artists, searchQuery, filterMode, oshiArtistIds])
+  }, [artists, searchQuery, filterMode, subFilter, oshiArtistIds])
+  
+  const handleFilterChange = (mode) => {
+    setFilterMode(mode)
+    if (mode !== 'upcoming') {
+      setSubFilter('all') // 다른 필터로 가면 서브 필터 초기화
+    }
+  }
   
   return (
     <div>
@@ -79,10 +115,10 @@ export default function ArtistList({
         )}
       </div>
       
-      {/* 필터 토글 */}
-      <div className="flex gap-1.5 mb-4">
+      {/* 필터 토글 (메인) */}
+      <div className="flex gap-1.5 mb-2 flex-wrap">
         <button
-          onClick={() => setFilterMode('all')}
+          onClick={() => handleFilterChange('all')}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
             filterMode === 'all'
               ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
@@ -92,7 +128,7 @@ export default function ArtistList({
           전체 {artists.length}
         </button>
         <button
-          onClick={() => setFilterMode('oshi')}
+          onClick={() => handleFilterChange('oshi')}
           className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
             filterMode === 'oshi'
               ? 'bg-amber-400 text-amber-950'
@@ -101,7 +137,66 @@ export default function ArtistList({
         >
           ⭐ 내 오시 {oshiArtistIds.length}
         </button>
+        <button
+          onClick={() => handleFilterChange('upcoming')}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+            filterMode === 'upcoming'
+              ? 'bg-pink-500 text-white'
+              : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+          }`}
+        >
+          🎤 공연 예정 {counts.upcoming}
+        </button>
       </div>
+      
+      {/* 서브 필터 (공연 예정 활성화 시에만) */}
+      {filterMode === 'upcoming' && (
+        <div className="flex gap-1.5 mb-4 flex-wrap pl-2 border-l-2 border-pink-200 dark:border-pink-900">
+          <button
+            onClick={() => setSubFilter('all')}
+            className={`px-3 py-1 rounded-full text-[11px] font-semibold transition ${
+              subFilter === 'all'
+                ? 'bg-pink-500 text-white'
+                : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+            }`}
+          >
+            전체 {counts.upcoming}
+          </button>
+          <button
+            onClick={() => setSubFilter('kr')}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold transition ${
+              subFilter === 'kr'
+                ? 'bg-cyan-500 text-white'
+                : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+            }`}
+          >
+            🇰🇷 내한 {counts.kr}
+          </button>
+          <button
+            onClick={() => setSubFilter('jp')}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold transition ${
+              subFilter === 'jp'
+                ? 'bg-pink-600 text-white'
+                : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+            }`}
+          >
+            🇯🇵 원정 {counts.jp}
+          </button>
+          <button
+            onClick={() => setSubFilter('festival')}
+            className={`flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-semibold transition ${
+              subFilter === 'festival'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+            }`}
+          >
+            🎪 페스 {counts.festival}
+          </button>
+        </div>
+      )}
+      
+      {/* 메인 필터에 서브필터 없을 때 mb 보정 */}
+      {filterMode !== 'upcoming' && <div className="mb-2" />}
       
       {/* 가수 목록 */}
       {filteredArtists.length === 0 ? (
@@ -112,7 +207,12 @@ export default function ArtistList({
               ? '검색 결과가 없어요' 
               : filterMode === 'oshi' 
                 ? '아직 오시 등록한 가수가 없어요' 
-                : '등록된 가수가 없어요'}
+                : filterMode === 'upcoming'
+                  ? subFilter === 'kr' ? '내한 공연 예정 가수가 없어요'
+                    : subFilter === 'jp' ? '원정 공연 예정 가수가 없어요'
+                    : subFilter === 'festival' ? '페스티벌 출연 예정 가수가 없어요'
+                    : '공연 예정 가수가 없어요'
+                  : '등록된 가수가 없어요'}
           </p>
           {filterMode === 'oshi' && (
             <p className="text-xs text-zinc-400 dark:text-zinc-500">

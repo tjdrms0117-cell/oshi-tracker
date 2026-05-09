@@ -216,33 +216,43 @@ export default function ConcertDetail({ session }) {
       <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 transition-colors">
         
         {/* 포스터 히어로 (있을 때) */}
-        {posterUrl ? (
-          <div className="relative w-full" style={{ maxHeight: '420px', overflow: 'hidden' }}>
-            <img
-              src={posterUrl}
-              alt={concert.title}
-              onError={() => setPosterError(true)}
-              className="w-full object-cover object-top"
-              style={{ maxHeight: '420px' }}
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(to bottom, transparent 40%, var(--tw-gradient-to, #fafaf9) 100%)`,
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-stone-50 dark:to-zinc-950" />
-            <div className="absolute top-5 left-5">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm font-semibold text-white bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-black/50 transition"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                뒤로
-              </button>
-            </div>
-          </div>
-        ) : (
+        {/* 포스터 히어로 (있을 때) */}
+{posterUrl ? (
+  <div className="relative w-full overflow-hidden" style={{ height: 'min(60vh, 480px)' }}>
+    {/* 배경: 포스터를 블러처리해서 화면 가득 채움 */}
+    <div
+      className="absolute inset-0"
+      style={{
+        backgroundImage: `url(${posterUrl})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'blur(40px) brightness(0.5)',
+        transform: 'scale(1.1)',
+      }}
+    />
+    {/* 메인 포스터: 가운데, 비율 유지 */}
+    <div className="relative h-full flex items-center justify-center px-5">
+      <img
+        src={posterUrl}
+        alt={concert.title}
+        onError={() => setPosterError(true)}
+        className="h-full w-auto max-w-full object-contain shadow-2xl rounded-lg"
+      />
+    </div>
+    {/* 하단 페이드아웃 */}
+    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-b from-transparent to-stone-50 dark:to-zinc-950 pointer-events-none" />
+    {/* 뒤로가기 버튼 */}
+    <div className="absolute top-5 left-5 z-10">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-sm font-semibold text-white bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full hover:bg-black/60 transition"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        뒤로
+      </button>
+    </div>
+  </div>
+) : (
           <div 
             className="relative pb-8"
             style={{ background: `linear-gradient(180deg, ${color}25 0%, transparent 100%)` }}

@@ -25,10 +25,34 @@ export default function ArtistDetail({ session }) {
   const [loading, setLoading] = useState(true)
   const [oshiLoading, setOshiLoading] = useState(false)
   const [festivals, setFestivals] = useState([])
+  const [profileImg, setProfileImg] = useState(null)
+  const [bannerImg, setBannerImg] = useState(null)
 
   useEffect(() => {
     loadData()
   }, [id, session])
+  
+  // 유튜브 채널 정보 (프로필 + 배너)
+  useEffect(() => {
+    if (!artist?.youtube_channel_id) {
+      setProfileImg(null)
+      setBannerImg(null)
+      return
+    }
+    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
+    if (!apiKey) return
+    fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${artist.youtube_channel_id}&key=${apiKey}`)
+      .then(r => r.json())
+      .then(data => {
+        const item = data.items?.[0]
+        if (!item) return
+        const thumb = item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url
+        const banner = item.brandingSettings?.image?.bannerExternalUrl
+if (thumb) setProfileImg(thumb)
+if (banner) setBannerImg(`${banner}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj`)
+      })
+      .catch(() => {})
+  }, [artist?.youtube_channel_id])
   
   const loadData = async () => {
     setLoading(true)
@@ -161,82 +185,124 @@ export default function ArtistDetail({ session }) {
   return (
     <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 transition-colors">
       
-      {/* 상단 그라디언트 헤더 */}
-      <div 
-        className="relative pb-8"
-        style={{
-          background: `linear-gradient(180deg, ${color}30 0%, transparent 100%)`,
-        }}
-      >
-        {/* 뒤로 가기 */}
-        <div className="px-5 pt-5 pb-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            뒤로
-          </button>
-        </div>
-
-        <div className="max-w-3xl mx-auto px-5 pt-4">
-          <div className="flex items-start gap-4 mb-6">
-            {/* 가수 컬러 도트 */}
+      {/* 상단 헤더 (유튜브 배너 or 그라디언트) */}
+      <div className="relative pb-20 overflow-hidden">
+        {/* 배경 레이어 */}
+        {bannerImg ? (
+          <>
             <div 
-              className="flex-shrink-0 w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg"
-              style={{ 
-                background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `url(${bannerImg})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
               }}
-            >
-              <Music className="w-8 h-8 text-white" />
-            </div>
-            
-            <div className="flex-1 min-w-0 pt-1">
-              <h1 
-                className="text-2xl font-black mb-1 leading-tight"
-                style={{ color }}
-              >
-                {artist.name}
-              </h1>
-              {artist.name_jp && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {artist.name_jp}
-                </p>
-              )}
-              
-              {/* 공연 카운트 */}
-              <div className="flex items-center gap-3 mt-3 text-xs">
-                {upcomingConcerts.length > 0 && (
-                  <span className="font-bold text-pink-600 dark:text-pink-400">
-                    예정 {upcomingConcerts.length}
-                  </span>
-                )}
-                {pastConcerts.length > 0 && (
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    지난 {pastConcerts.length}
-                  </span>
-                )}
-                {concerts.length === 0 && (
-                  <span className="text-zinc-400 dark:text-zinc-500 italic">
-                    아직 등록된 공연이 없어요
-                  </span>
-                )}
-              </div>
-            </div>
-            
-            {/* 오시 버튼 */}
+            />
+            {/* 어두운 오버레이 (가독성) */}
+            <div 
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.65) 60%, ${color}40 100%)`,
+              }}
+            />
+          </>
+        ) : (
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(180deg, ${color}30 0%, transparent 100%)`,
+            }}
+          />
+        )}
+
+        <div className="relative">
+          {/* 뒤로 가기 */}
+          <div className="px-5 pt-5 pb-3">
             <button
-              onClick={handleToggleOshi}
-              disabled={oshiLoading}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition ${
-                isOshi
-                  ? 'bg-amber-400 text-amber-950 shadow-md'
-                  : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+              onClick={() => navigate(-1)}
+              className={`flex items-center gap-2 text-sm transition ${
+                bannerImg
+                  ? 'text-white/90 hover:text-white drop-shadow'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
               }`}
             >
-              <Star className="w-3.5 h-3.5" fill={isOshi ? 'currentColor' : 'none'} />
-              {isOshi ? '내 오시' : '오시 등록'}
+              <ArrowLeft className="w-4 h-4" />
+              뒤로
             </button>
+          </div>
+
+          <div className="max-w-3xl mx-auto px-5 pt-4">
+            <div className="flex items-start gap-4 mb-6">
+              {/* 프로필 사진 or 컬러 박스 */}
+              <div 
+                className="flex-shrink-0 w-16 h-16 rounded-2xl overflow-hidden shadow-lg ring-2 ring-white/20"
+                style={!profileImg ? { 
+                  background: `linear-gradient(135deg, ${color}, ${color}dd)`,
+                } : undefined}
+              >
+                {profileImg ? (
+                  <img src={profileImg} alt={artist.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Music className="w-8 h-8 text-white" />
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0 pt-1">
+                <h1 
+                  className="text-2xl font-black mb-1 leading-tight"
+                  style={{ 
+                    color: bannerImg ? '#fff' : color,
+                    textShadow: bannerImg ? '0 2px 8px rgba(0,0,0,0.6)' : 'none',
+                  }}
+                >
+                  {artist.name}
+                </h1>
+                {artist.name_jp && (
+                  <p 
+                    className={bannerImg ? 'text-sm text-white/80 drop-shadow' : 'text-sm text-zinc-600 dark:text-zinc-400'}
+                  >
+                    {artist.name_jp}
+                  </p>
+                )}
+                
+                {/* 공연 카운트 */}
+                <div className="flex items-center gap-3 mt-3 text-xs">
+                  {upcomingConcerts.length > 0 && (
+                    <span className={`font-bold ${bannerImg ? 'text-pink-300 drop-shadow' : 'text-pink-600 dark:text-pink-400'}`}>
+                      예정 {upcomingConcerts.length}
+                    </span>
+                  )}
+                  {pastConcerts.length > 0 && (
+                    <span className={bannerImg ? 'text-white/70 drop-shadow' : 'text-zinc-500 dark:text-zinc-400'}>
+                      지난 {pastConcerts.length}
+                    </span>
+                  )}
+                  {concerts.length === 0 && (
+                    <span className={bannerImg ? 'text-white/60 italic drop-shadow' : 'text-zinc-400 dark:text-zinc-500 italic'}>
+                      아직 등록된 공연이 없어요
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* 오시 버튼 */}
+              <button
+                onClick={handleToggleOshi}
+                disabled={oshiLoading}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition ${
+                  isOshi
+                    ? 'bg-amber-400 text-amber-950 shadow-md'
+                    : bannerImg
+                      ? 'bg-white/90 text-zinc-800 backdrop-blur-sm shadow-md hover:bg-white'
+                      : 'bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+                }`}
+              >
+                <Star className="w-3.5 h-3.5" fill={isOshi ? 'currentColor' : 'none'} />
+                {isOshi ? '내 오시' : '오시 등록'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
