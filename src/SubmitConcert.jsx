@@ -26,8 +26,23 @@ export default function SubmitConcert({ session }) {
   const navigate = useNavigate()
 
   const [step, setStep] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('submit_step') || '0') } catch { return 0 }
-  })
+    try {
+      const saved = localStorage.getItem('submit_step')
+      if (!saved) return 0
+      const parsed = JSON.parse(saved)
+      // 잘못 저장된 문자열 "0" 같은 케이스 자동 정리
+      if (parsed === '0' || parsed === 0) return 0
+      // 유효한 숫자 step (1~4) 또는 문자열 step (artist, festival_*) 만 허용
+      if (typeof parsed === 'number' && parsed >= 1 && parsed <= 4) return parsed
+      if (typeof parsed === 'string' && (parsed === 'artist' || parsed.startsWith('festival_'))) return parsed
+      // 그 외는 모두 0으로 리셋
+      localStorage.removeItem('submit_step')
+      return 0
+    } catch {
+      localStorage.removeItem('submit_step')
+      return 0
+    }
+})
   const [artists, setArtists] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [submitting, setSubmitting] = useState(false)
