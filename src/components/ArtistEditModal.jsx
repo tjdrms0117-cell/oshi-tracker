@@ -10,6 +10,7 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
   const [topSongTitle, setTopSongTitle] = useState(artist?.top_song_title || '')
   const [topSongTitleJp, setTopSongTitleJp] = useState(artist?.top_song_title_jp || '')
   const [topSongUrl, setTopSongUrl] = useState(artist?.top_song_youtube_url || '')
+  const [youtubeChannelId, setYoutubeChannelId] = useState(artist?.youtube_channel_id || '')
   const [saving, setSaving] = useState(false)
   
   const handleSave = async () => {
@@ -28,16 +29,18 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
           topSongTitle: topSongTitle.trim() || null,
           topSongTitleJp: topSongTitleJp.trim() || null,
           topSongYoutubeUrl: topSongUrl.trim() || null,
+          youtubeChannelId: youtubeChannelId.trim() || null,
         })
       } else {
         await updateArtist(artist.id, {
-        name: name.trim(),
-        name_jp: nameJp.trim() || null,
-        color,
-        top_song_title: topSongTitle.trim() || null,
-        top_song_title_jp: topSongTitleJp.trim() || null,
-        top_song_youtube_url: topSongUrl.trim() || null,
-      })
+          name: name.trim(),
+          name_jp: nameJp.trim() || null,
+          color,
+          top_song_title: topSongTitle.trim() || null,
+          top_song_title_jp: topSongTitleJp.trim() || null,
+          top_song_youtube_url: topSongUrl.trim() || null,
+          youtube_channel_id: youtubeChannelId.trim() || null,
+        })
       }
       alert(isNew ? '추가 완료' : '수정 완료')
       onDone()
@@ -165,6 +168,22 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
                   placeholder="https://youtu.be/abc123"
                   className="w-full px-3 py-2 rounded-lg text-sm bg-stone-50 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 outline-none focus:border-pink-300"
                 />
+              </div>
+              <div>
+                <label className="text-[10px] text-zinc-500 mb-1 block">
+                  YouTube 채널 ID
+                  <span className="ml-1 text-zinc-400">(프로필 사진용, 예: UCxxxx...)</span>
+                </label>
+                <input
+                  type="text"
+                  value={youtubeChannelId}
+                  onChange={(e) => setYoutubeChannelId(e.target.value)}
+                  placeholder="UCxxxxxxxxxxxxxxxxxxxx"
+                  className="w-full px-3 py-2 rounded-lg text-sm bg-stone-50 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 outline-none focus:border-pink-300"
+                />
+                <p className="text-[10px] text-zinc-400 mt-1">
+                  유튜브 채널 → 정보 탭 → 채널 ID 복사
+                </p>
               </div>
             </div>
           </div>

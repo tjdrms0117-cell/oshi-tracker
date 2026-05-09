@@ -14,7 +14,7 @@ export async function fetchArtists() {
   return data || []
 }
 
-export async function createArtist({ name, nameJp, color, topSongTitle, topSongTitleJp, topSongYoutubeUrl }) {
+export async function createArtist({ name, nameJp, color, topSongTitle, topSongTitleJp, topSongYoutubeUrl, youtubeChannelId }) {
   const { data, error } = await supabase
     .from('artists')
     .insert({ 
@@ -24,6 +24,7 @@ export async function createArtist({ name, nameJp, color, topSongTitle, topSongT
       top_song_title: topSongTitle,
       top_song_title_jp: topSongTitleJp,
       top_song_youtube_url: topSongYoutubeUrl,
+      youtube_channel_id: youtubeChannelId || null,
     })
     .select()
     .single()
@@ -1004,7 +1005,7 @@ export async function fetchFestivals() {
     .order('date', { ascending: true })
   if (error) throw error
   return data || []
-}
+}  
 
 export async function fetchFestivalById(festivalId) {
   const { data, error } = await supabase
@@ -1145,5 +1146,28 @@ export async function rejectFestivalSubmission(submissionId, reason, reviewerId)
     .from('festival_submissions')
     .update({ status: 'rejected', reject_reason: reason, reviewed_by: reviewerId, reviewed_at: new Date().toISOString() })
     .eq('id', submissionId)
+  if (error) throw error
+}
+export async function createInquiry({ submitted_by, nickname, content }) {
+  const { error } = await supabase
+    .from('inquiries')
+    .insert({ submitted_by: submitted_by || null, nickname: nickname || null, content })
+  if (error) throw error
+}
+
+export async function fetchInquiries() {
+  const { data, error } = await supabase
+    .from('inquiries')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+export async function updateInquiryStatus(id, status) {
+  const { error } = await supabase
+    .from('inquiries')
+    .update({ status })
+    .eq('id', id)
   if (error) throw error
 }

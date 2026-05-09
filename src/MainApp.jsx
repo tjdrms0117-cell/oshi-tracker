@@ -30,6 +30,8 @@ import VenueEditModal from './components/VenueEditModal'
 import { deleteVenue, fetchFestivals } from './lib/api'
 import ArtistEditModal from './components/ArtistEditModal'
 import FestivalEditModal from './components/FestivalEditModal'
+import InquiryModal from './components/InquiryModal'
+import { MessageCircle } from 'lucide-react'
 
 const VALID_TABS = ['concerts', 'calendar', 'artists', 'venues', 'submit', 'review']
 
@@ -46,15 +48,26 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const country = searchParams.get('country') === 'japan' ? 'japan' : 'korea'
 
   const setActiveTab = (tab) => {
-    setSearchParams({ tab, country })
+    setSearchParams({ tab, country, filter: subFilter })
   }
 
   const setCountry = (newCountry) => {
-    setSearchParams({ tab: activeTab, country: newCountry })
+    setSearchParams({ tab: activeTab, country: newCountry, filter: subFilter })
   }
 
-  const [subFilter, setSubFilter] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const setSubFilter = (filter) => {
+    setSearchParams({ tab: activeTab, country, filter })
+  }
+
+  const setSearchQuery = (q) => {
+    setSearchParams({ tab: activeTab, country, filter: subFilter, ...(q ? { q } : {}) })
+  }
+
+  const VALID_FILTERS = ['all', 'attending', 'oshi', 'festival', 'past', 'ticketing']
+  const subFilter = VALID_FILTERS.includes(searchParams.get('filter'))
+    ? searchParams.get('filter')
+    : 'all'
+  const searchQuery = searchParams.get('q') || ''
   
   const [concerts, setConcerts] = useState([])
   const [submissions, setSubmissions] = useState([])
@@ -70,6 +83,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [festivals, setFestivals] = useState([])
   const [editFestival, setEditFestival] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [inquiryOpen, setInquiryOpen] = useState(false)
 
   useEffect(() => {
     if (session?.user) {
@@ -462,6 +476,24 @@ export default function MainApp({ session, theme, onThemeChange }) {
           artist={null}
           onClose={() => setAddArtistOpen(false)}
           onDone={() => { setAddArtistOpen(false); loadAllData() }}
+        />
+      )}
+
+      {/* 문의 플로팅 버튼 */}
+      <button
+        onClick={() => setInquiryOpen(true)}
+        className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg z-40 hover:scale-105 transition-transform"
+        style={{ background: 'linear-gradient(135deg, #e91e63, #00acc1)' }}
+      >
+        <MessageCircle className="w-4 h-4 text-white flex-shrink-0" />
+        <span className="text-white text-xs font-bold whitespace-nowrap">관리자에게 건의/문의</span>
+      </button>
+
+      {inquiryOpen && (
+        <InquiryModal
+          session={session}
+          profile={profile}
+          onClose={() => setInquiryOpen(false)}
         />
       )}
     </div>

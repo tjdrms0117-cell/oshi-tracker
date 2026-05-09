@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Send } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Send, MessageCircle } from 'lucide-react'
 import { fetchArtists, createSubmissionWithRounds, fetchMySubmissions, createFestivalSubmission } from './lib/api'
 import Step1Artist from './components/submit/Step1Artist'
 import Step2Concert from './components/submit/Step2Concert'
@@ -11,6 +11,7 @@ import ArtistSubmitForm from './components/submit/ArtistSubmitForm'
 import StepFestival1Info from './components/submit/StepFestival1Info'
 import StepFestival2Artists from './components/submit/StepFestival2Artists'
 import StepFestival3Confirm from './components/submit/StepFestival3Confirm'
+import InquiryModal from './components/InquiryModal'
 
 const clearLocalStorage = () => {
   localStorage.removeItem('submit_step')
@@ -46,6 +47,8 @@ export default function SubmitConcert({ session }) {
   const [artists, setArtists] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [inquiryOpen, setInquiryOpen] = useState(false)
+  const [profile, setProfile] = useState(null)
 
   // 공연 제보 상태
   const [artistData, setArtistData] = useState(() => {
@@ -121,10 +124,15 @@ export default function SubmitConcert({ session }) {
       ])
       setArtists(artistsData)
       setSubmissions(mySubData)
+      if (session?.user) {
+        const { getProfile } = await import('./lib/auth')
+        getProfile(session.user.id).then(setProfile).catch(() => {})
+      }
     } catch (err) {
       console.error('데이터 로드 실패:', err)
     }
   }
+  
 
   const startNew = () => {
     if (!session?.user) { alert('제보는 로그인 후 이용할 수 있어요'); return }
@@ -254,15 +262,38 @@ export default function SubmitConcert({ session }) {
     }
   }
 
+  const FloatingInquiry = () => (
+    <>
+      <button
+        onClick={() => setInquiryOpen(true)}
+        className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg z-40 hover:scale-105 transition-transform"
+        style={{ background: 'linear-gradient(135deg, #e91e63, #00acc1)' }}
+      >
+        <MessageCircle className="w-4 h-4 text-white flex-shrink-0" />
+        <span className="text-white text-xs font-bold whitespace-nowrap">관리자에게 건의/문의</span>
+      </button>
+      {inquiryOpen && (
+        <InquiryModal
+          session={session}
+          profile={profile}
+          onClose={() => setInquiryOpen(false)}
+        />
+      )}
+    </>
+  )
+
   // 아티스트 제보 화면
   if (step === 'artist') {
     return (
-      <div className="space-y-5">
-        <button onClick={() => updateStep(0)} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700">
-          ← 뒤로
-        </button>
-        <ArtistSubmitForm session={session} onDone={() => { updateStep(0); loadData() }} />
-      </div>
+      <>
+        <div className="space-y-5">
+          <button onClick={() => updateStep(0)} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-700">
+            ← 뒤로
+          </button>
+          <ArtistSubmitForm session={session} onDone={() => { updateStep(0); loadData() }} />
+        </div>
+        <FloatingInquiry />
+      </>
     )
   }
 
@@ -270,6 +301,7 @@ export default function SubmitConcert({ session }) {
   if (step === 0) {
     const pendingCount = submissions.filter(s => s.status === 'pending').length
     return (
+      <>
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-3">
           <button
@@ -322,7 +354,9 @@ export default function SubmitConcert({ session }) {
           <MySubmissions submissions={submissions} />
         </div>
       </div>
-    )
+      <FloatingInquiry />
+      </>
+  )
   }
 
   // 페스티벌 제보 플로우
@@ -343,7 +377,9 @@ export default function SubmitConcert({ session }) {
     }
 
     return (
+      <>
       <div className="space-y-5">
+        {/* 헤더 */}
         {/* 헤더 */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -426,11 +462,14 @@ export default function SubmitConcert({ session }) {
           )}
         </div>
       </div>
-    )
+      <FloatingInquiry />
+    </>
+  )
   }
 
   // 공연 제보 플로우 (step 1~4)
   return (
+    <>
     <div className="space-y-5">
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -485,5 +524,8 @@ export default function SubmitConcert({ session }) {
         )}
       </div>
     </div>
+
+      <FloatingInquiry />
+    </>
   )
 }

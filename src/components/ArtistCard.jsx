@@ -1,6 +1,6 @@
 import { Star, Music, Edit3, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function ArtistCard({ 
   artist, 
@@ -14,6 +14,20 @@ export default function ArtistCard({
   const [oshiLoading, setOshiLoading] = useState(false)
   
   const color = artist.color || '#888'
+  const [profileImg, setProfileImg] = useState(null)
+
+  useEffect(() => {
+    if (!artist.youtube_channel_id) return
+    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
+    if (!apiKey) return
+    fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${artist.youtube_channel_id}&key=${apiKey}`)
+      .then(r => r.json())
+      .then(data => {
+        const thumb = data.items?.[0]?.snippet?.thumbnails?.medium?.url
+        if (thumb) setProfileImg(thumb)
+      })
+      .catch(() => {})
+  }, [artist.youtube_channel_id])
   
   const handleCardClick = () => {
     navigate(`/artists/${artist.id}`)
@@ -43,14 +57,16 @@ export default function ArtistCard({
       
       <div className="relative p-4">
         <div className="flex items-start gap-3">
-          {/* 컬러 도트 */}
-          <div 
-            className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ 
-              background: `linear-gradient(135deg, ${color}, ${color}dd)`,
-            }}
-          >
-            <Music className="w-5 h-5 text-white" />
+          {/* 프로필 이미지 또는 컬러 도트 */}
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl overflow-hidden"
+            style={{ background: `linear-gradient(135deg, ${color}, ${color}dd)` }}>
+            {profileImg ? (
+              <img src={profileImg} alt={artist.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="w-6 h-6 text-white" />
+              </div>
+            )}
           </div>
           
           {/* 가수 정보 */}

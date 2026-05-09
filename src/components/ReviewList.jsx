@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock, User, ExternalLink, Music, Calendar } from 'lucide-react'
+import { Clock, User, ExternalLink, Music, Calendar, MessageCircle, Check, X } from 'lucide-react'
 import { 
   fetchPendingSubmissions, 
   fetchPendingArtistSubmissions, 
@@ -8,14 +8,17 @@ import {
   fetchPendingFestivalSubmissions,
   approveFestivalSubmission,
   rejectFestivalSubmission,
+  fetchInquiries,
+  updateInquiryStatus,
 } from '../lib/api'
 import ReviewModal from './ReviewModal'
 
 export default function ReviewList({ session }) {
-  const [tab, setTab] = useState('concert') // concert | artist | festival
+  const [tab, setTab] = useState('concert') // concert | artist | festival | inquiry
   const [submissions, setSubmissions] = useState([])
   const [artistSubmissions, setArtistSubmissions] = useState([])
   const [festivalSubmissions, setFestivalSubmissions] = useState([])
+  const [inquiries, setInquiries] = useState([])
   const [selectedSubmission, setSelectedSubmission] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -26,14 +29,16 @@ export default function ReviewList({ session }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [concertData, artistData, festivalData] = await Promise.all([
+      const [concertData, artistData, festivalData, inquiryData] = await Promise.all([
         fetchPendingSubmissions(),
         fetchPendingArtistSubmissions(),
         fetchPendingFestivalSubmissions(),
+        fetchInquiries().catch(() => []),
       ])
       setSubmissions(concertData)
       setArtistSubmissions(artistData)
       setFestivalSubmissions(festivalData)
+      setInquiries(inquiryData)
     } catch (err) {
       console.error('검수 목록 로드 실패:', err)
     } finally {
@@ -126,6 +131,14 @@ export default function ReviewList({ session }) {
           }`}
         >
           페스티벌 {festivalSubmissions.length > 0 && `(${festivalSubmissions.length})`}
+        </button>
+        <button
+          onClick={() => setTab('inquiry')}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition ${
+            tab === 'inquiry' ? 'bg-pink-500 text-white' : 'bg-white border border-stone-200 text-zinc-500'
+          }`}
+        >
+          문의 {inquiries.filter(i => i.status === 'pending').length > 0 && `(${inquiries.filter(i => i.status === 'pending').length})`}
         </button>
       </div>
 
@@ -398,7 +411,57 @@ export default function ReviewList({ session }) {
           )}
         </>
       )}
+{/* 문의 탭 */}
+      {tab === 'inquiry' && (
+        <>
+          {inquiries.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-5xl mb-3 opacity-20">💬</div>
+              <p className="text-sm font-bold text-zinc-700">문의가 없어요</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {inquiries.map(inq => (
+                <div key={inq.id} className={`rounded-xl p-4 bg-white border transition ${
+                  inq.status === 'pending' ? 'border-pink-200' : 'border-stone-200 opacity-60'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-3.5 h-3.5 text-pink-500" />
+                      <span className="text-xs font-bold text-zinc-700">
+                        {inq.nickname || '익명'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        inq.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-stone-100 text-stone-500'
+                      }`}>
+                        {inq.status === 'pending' ? '미확인' : '확인됨'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400">
+                        {new Date(inq.created_at).toLocaleDateString('ko', { month: 'numeric', day: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-zinc-800 whitespace-pre-wrap mb-3">{inq.content}</div>
+                  {/* 답변 있으면 표시 */}
+                  {inq.admin_reply && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-stone-50 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700">
+                      <div className="text-[10px] font-bold text-zinc-500 mb-1">관리자 답변</div>
+                      <div className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">{inq.admin_reply}</div>
+                    </div>
+                  )}
 
+                  {/* 답변 입력 */}
+                  <ReplyBox inq={inq} onDone={loadData} />
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
       {selectedSubmission && (
         <ReviewModal
           submission={selectedSubmission}
@@ -408,5 +471,61 @@ export default function ReviewList({ session }) {
         />
       )}
     </>
+  )
+}
+
+function ReplyBox({ inq, onDone }) {
+  const [open, setOpen] = useState(false)
+  const [reply, setReply] = useState(inq.admin_reply || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { supabase } = await import('../lib/supabase')
+      await supabase.from('inquiries').update({
+        admin_reply: reply || null,
+        replied_at: reply ? new Date().toISOString() : null,
+        status: 'checked',
+      }).eq('id', inq.id)
+      setOpen(false)
+      onDone()
+    } catch (err) {
+      alert('저장 실패: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 mt-1">
+        <Check className="w-3.5 h-3.5" />
+        {inq.admin_reply ? '답변 수정' : '답변 작성'}
+      </button>
+    )
+  }
+
+  return (
+    <div className="mt-2 space-y-2">
+      <textarea
+        value={reply}
+        onChange={e => setReply(e.target.value)}
+        placeholder="답변을 입력하세요..."
+        rows={3}
+        className="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-xs outline-none focus:border-emerald-400 resize-none"
+      />
+      <div className="flex gap-2">
+        <button onClick={() => setOpen(false)}
+          className="flex-1 py-1.5 rounded-lg border border-stone-200 text-xs font-bold text-zinc-500">
+          취소
+        </button>
+        <button onClick={handleSave} disabled={saving}
+          className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50">
+          {saving ? '저장 중...' : '답변 저장'}
+        </button>
+      </div>
+    </div>
   )
 }

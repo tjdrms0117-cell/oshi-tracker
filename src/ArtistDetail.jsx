@@ -295,7 +295,7 @@ export default function ArtistDetail({ session }) {
               <Calendar className="w-4 h-4 text-pink-500" />
               예정 공연 ({upcomingConcerts.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {upcomingConcerts.map((concert) => (
                 <ConcertCard
                   key={concert.id}
@@ -316,33 +316,67 @@ export default function ArtistDetail({ session }) {
               <span>🎪</span>
               페스티벌 출연 예정
             </h2>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {festivals
                 .filter(f => f && new Date(f.date) >= today)
                 .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .map(f => (
-                  <button
-                    key={f.id}
-                    onClick={() => navigate(`/festivals/${f.id}`)}
-                    className="w-full text-left rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 hover:shadow-md transition flex items-center gap-3"
-                  >
-                    <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ background: 'linear-gradient(#06b6d4, #0e7490)' }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-bold" style={{ color: '#0e7490' }}>🎪 페스티벌</div>
-                      <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{f.name}</div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5">
-                        {new Date(f.date).toLocaleDateString('ko')}
-                        {f.performance_date && f.performance_date !== f.date && (
-                          <span className="ml-1 px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 font-bold">
-                            {new Date(f.performance_date).toLocaleDateString('ko', { month: 'numeric', day: 'numeric' })} 출연
-                          </span>
+                .map(f => {
+                  const formatDate = (d) => {
+                    if (!d) return ''
+                    const date = new Date(d)
+                    return `${date.getMonth() + 1}/${date.getDate()}`
+                  }
+                  const dateStr = f.end_date && f.end_date !== f.date
+                    ? `${formatDate(f.date)} ~ ${formatDate(f.end_date)}`
+                    : formatDate(f.date)
+
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => navigate(`/festivals/${f.id}`)}
+                      className="text-left rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden hover:shadow-md transition flex flex-col"
+                    >
+                      {/* 포스터 */}
+                      <div className="relative w-full" style={{ paddingBottom: '133%' }}>
+                        {f.poster_url ? (
+                          <img src={f.poster_url} alt={f.name}
+                            className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1"
+                            style={{ background: 'linear-gradient(135deg, #06b6d4, #0e7490)' }}>
+                            <div className="text-2xl opacity-60">🎪</div>
+                            <div className="text-white/80 text-[10px] font-bold text-center px-2 leading-tight">
+                              {f.name}
+                            </div>
+                          </div>
                         )}
-                        {f.venue && <span className="ml-1">· {f.venue}</span>}
+                        <div className="absolute bottom-0 left-0 right-0 px-2 py-1"
+                          style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}>
+                          <div className="text-white text-[10px] font-bold">{dateStr}</div>
+                          {(f.venue || f.city) && (
+                            <div className="text-white/70 text-[9px] truncate">{f.venue || f.city}</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-zinc-400 text-xs">›</span>
-                  </button>
-                ))}
+
+                      {/* 컬러라인 */}
+                      <div className="h-0.5 w-full" style={{ background: 'linear-gradient(90deg, #06b6d4, #0e7490)' }} />
+
+                      {/* 정보 */}
+                      <div className="p-2">
+                        <div className="text-[9px] font-bold mb-0.5" style={{ color: '#0e7490' }}>🎪 페스</div>
+                        <div className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-tight line-clamp-2">
+                          {f.name}
+                        </div>
+                        {f.performance_date && f.performance_date !== f.date && (
+                          <div className="text-[10px] mt-1 px-1.5 py-0.5 rounded inline-block bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 font-bold">
+                            {new Date(f.performance_date).toLocaleDateString('ko', { month: 'numeric', day: 'numeric' })} 출연
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
             </div>
           </section>
         )}
@@ -354,7 +388,7 @@ export default function ArtistDetail({ session }) {
               <Calendar className="w-4 h-4" />
               지난 공연 ({pastConcerts.length})
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 opacity-70">
               {pastConcerts.map((concert) => (
                 <ConcertCard
                   key={concert.id}
