@@ -10,6 +10,22 @@ function proxyImage(url) {
   // 외부 이미지는 프록시 거치기
   return `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}`
 }
+// 모든 이미지 preload (캡처 전 대기)
+function preloadImages(urls) {
+  return Promise.all(
+    urls.filter(Boolean).map(url => 
+      new Promise((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => resolve(true)
+        img.onerror = () => resolve(false) // 실패해도 그냥 진행
+        img.src = url
+        // 5초 타임아웃
+        setTimeout(() => resolve(false), 5000)
+      })
+    )
+  )
+}
 
 export default function ShareImageModal({
   nickname,
@@ -57,6 +73,17 @@ export default function ShareImageModal({
   // 이미지 생성
   const generateImage = async () => {
   if (!cardRef.current) return null
+  
+  // 카드 안의 모든 이미지 URL 수집
+  const imgs = cardRef.current.querySelectorAll('img')
+  const urls = Array.from(imgs).map(img => img.src).filter(Boolean)
+  
+  // 모든 이미지 로드 대기
+  await preloadImages(urls)
+  
+  // 추가 안전장치: 200ms 더 기다리기 (DOM 페인트)
+  await new Promise(r => setTimeout(r, 200))
+  
   return await toPng(cardRef.current, {
     pixelRatio: 2,
     cacheBust: true,
@@ -404,6 +431,8 @@ function ConcertMiniCard({ concert, isPast }) {
   const dateStr = `${date.getMonth() + 1}/${date.getDate()}`
   const isKorea = concert.country === 'korea'
   const flagColor = isKorea ? '#06b6d4' : '#ec4899'
+  const posterUrl = concert.poster_url ? proxyImage(concert.poster_url) : null
+  const fallbackColor = concert.artist?.color || '#666'
   
   return (
     <div style={{
@@ -418,11 +447,25 @@ function ConcertMiniCard({ concert, isPast }) {
       <div style={{
         width: '100%',
         aspectRatio: '3/4',
-        background: concert.poster_url 
-  ? `url(${proxyImage(concert.poster_url)}) center/cover`
-  : `linear-gradient(135deg, ${concert.artist?.color || '#666'}, ${concert.artist?.color || '#333'}dd)`,
         position: 'relative',
+        background: `linear-gradient(135deg, ${fallbackColor}, ${fallbackColor}dd)`,
+        overflow: 'hidden',
       }}>
+        {posterUrl && (
+          <img 
+            src={posterUrl}
+            alt=""
+            crossOrigin="anonymous"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
+        
         {/* 국가 뱃지 */}
         <div style={{
           position: 'absolute',
@@ -434,6 +477,7 @@ function ConcertMiniCard({ concert, isPast }) {
           color: 'white',
           fontSize: '9px',
           fontWeight: 700,
+          zIndex: 2,
         }}>
           {isKorea ? '내한' : '원정'}
         </div>
@@ -450,6 +494,7 @@ function ConcertMiniCard({ concert, isPast }) {
             color: 'white',
             fontSize: '8px',
             fontWeight: 700,
+            zIndex: 2,
           }}>
             ✓
           </div>
@@ -466,6 +511,7 @@ function ConcertMiniCard({ concert, isPast }) {
           color: 'white',
           fontSize: '11px',
           fontWeight: 700,
+          zIndex: 2,
         }}>
           {dateStr}
         </div>
@@ -523,21 +569,34 @@ function OshiGrid({ artists }) {
 
 function OshiMiniCard({ artist }) {
   const color = artist.color || '#888'
+  const thumbUrl = artist.youtube_thumbnail_url ? proxyImage(artist.youtube_thumbnail_url) : null
   return (
-    <div style={{
-      textAlign: 'center',
-    }}>
+    <div style={{ textAlign: 'center' }}>
       <div style={{
         width: '100%',
         aspectRatio: '1',
         borderRadius: '50%',
         overflow: 'hidden',
-        background: artist.youtube_thumbnail_url
-  ? `url(${proxyImage(artist.youtube_thumbnail_url)}) center/cover`
-  : `linear-gradient(135deg, ${color}, ${color}dd)`,
+        background: `linear-gradient(135deg, ${color}, ${color}dd)`,
         marginBottom: '4px',
         border: `2px solid ${color}`,
-      }} />
+        position: 'relative',
+      }}>
+        {thumbUrl && (
+          <img 
+            src={thumbUrl}
+            alt=""
+            crossOrigin="anonymous"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )}
+      </div>
       <div style={{
         fontSize: '9px',
         fontWeight: 700,
