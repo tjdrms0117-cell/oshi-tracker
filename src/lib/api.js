@@ -1171,3 +1171,52 @@ export async function updateInquiryStatus(id, status) {
     .eq('id', id)
   if (error) throw error
 }
+// ============================================
+// 마이페이지 - 프로필 / 닉네임
+// ============================================
+
+export async function fetchMyProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateMyNickname(userId, nickname) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ nickname })
+    .eq('id', userId)
+  if (error) throw error
+}
+
+// ============================================
+// 마이페이지 - 페스티벌 제보 내역
+// ============================================
+
+export async function fetchMyFestivalSubmissions(userId) {
+  const { data, error } = await supabase
+    .from('festival_submissions')
+    .select('*')
+    .eq('submitted_by', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}
+
+// ============================================
+// 마이페이지 - 내 문의 내역 (답변 포함)
+// ============================================
+
+export async function fetchMyInquiries(userId) {
+  const { data, error } = await supabase
+    .from('inquiries')
+    .select('*')
+    .eq('submitted_by', userId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data || []
+}

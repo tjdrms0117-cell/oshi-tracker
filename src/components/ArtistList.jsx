@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import ArtistEditModal from './ArtistEditModal'
-import { Search, Plus, X } from 'lucide-react'
+import { Search, Plus, X, RefreshCw } from 'lucide-react'
 import ArtistCard from './ArtistCard'
+import { syncAllArtistsYouTubeData } from '../lib/youtube'
 
 export default function ArtistList({ 
   artists, 
@@ -13,9 +14,31 @@ export default function ArtistList({
   onArtistUpdated,
 }) {
   const [editArtist, setEditArtist] = useState(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterMode, setFilterMode] = useState('all') // all | oshi | upcoming
-  const [subFilter, setSubFilter] = useState('all') // all | kr | jp | festival
+const [searchQuery, setSearchQuery] = useState('')
+const [filterMode, setFilterMode] = useState('all') // all | oshi | upcoming
+const [subFilter, setSubFilter] = useState('all') // all | kr | jp | festival
+const [syncing, setSyncing] = useState(false)
+const [syncProgress, setSyncProgress] = useState(null)
+
+const handleSyncAll = async () => {
+  if (syncing) return
+  if (!confirm('모든 아티스트의 YouTube 정보를 동기화할까요?\n(채널 ID 등록된 아티스트만, 약 1~2분 소요)')) return
+  
+  setSyncing(true)
+  setSyncProgress({ current: 0, total: 0, artistName: '' })
+  try {
+    const result = await syncAllArtistsYouTubeData((p) => {
+      setSyncProgress(p)
+    })
+    alert(`동기화 완료\n성공: ${result.success}명\n실패: ${result.failed}명`)
+    if (onArtistUpdated) onArtistUpdated()
+  } catch (err) {
+    alert('동기화 중 오류: ' + err.message)
+  } finally {
+    setSyncing(false)
+    setSyncProgress(null)
+  }
+}
   
   // 아티스트가 공연/페스가 예정되어 있는지
   const hasUpcoming = (artist, type = 'all') => {
@@ -104,16 +127,49 @@ export default function ArtistList({
           )}
         </div>
         
-        {isAdmin && onAddArtist && (
-          <button
-            onClick={onAddArtist}
-            className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            추가
-          </button>
-        )}
+        {isAdmin && (
+  <button
+    onClick={handleSyncAll}
+    disabled={syncing}
+    className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 disabled:opacity-50"
+    title="모든 아티스트의 YouTube 정보 갱신"
+  >
+    <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+    {syncing ? '동기화...' : '동기화'}
+  </button>
+)}
+
+{isAdmin && onAddArtist && (
+  <button
+    onClick={onAddArtist}
+    disabled={syncing}
+    className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 disabled:opacity-50"
+  >
+    <Plus className="w-3.5 h-3.5" />
+    추가
+  </button>
+)}
       </div>
+      
+       {/* 동기화 진행 상황 */}
+      {syncing && syncProgress && syncProgress.total > 0 && (
+        <div className="mb-3 p-3 rounded-lg bg-cyan-50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-cyan-700 dark:text-cyan-300">
+              YouTube 동기화 중... {syncProgress.current}/{syncProgress.total}
+            </span>
+            <span className="text-[10px] text-cyan-600 dark:text-cyan-400">
+              {syncProgress.artistName}
+            </span>
+          </div>
+          <div className="h-1.5 bg-cyan-100 dark:bg-cyan-950/40 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-cyan-500 transition-all"
+              style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
       
       {/* 필터 토글 (메인) */}
       <div className="flex gap-1.5 mb-2 flex-wrap">

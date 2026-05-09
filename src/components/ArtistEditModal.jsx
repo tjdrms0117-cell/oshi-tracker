@@ -14,42 +14,55 @@ export default function ArtistEditModal({ artist, onClose, onDone }) {
   const [saving, setSaving] = useState(false)
   
   const handleSave = async () => {
-    if (!name.trim()) {
-      alert('이름은 필수예요')
-      return
+  if (!name.trim()) {
+    alert('이름은 필수예요')
+    return
+  }
+  
+  setSaving(true)
+  try {
+    const trimmedChannelId = youtubeChannelId.trim() || null
+    const channelIdChanged = trimmedChannelId !== (artist?.youtube_channel_id || null)
+    
+    let savedId
+    if (isNew) {
+      const created = await createArtist({
+        name: name.trim(),
+        nameJp: nameJp.trim() || null,
+        color,
+        topSongTitle: topSongTitle.trim() || null,
+        topSongTitleJp: topSongTitleJp.trim() || null,
+        topSongYoutubeUrl: topSongUrl.trim() || null,
+        youtubeChannelId: trimmedChannelId,
+      })
+      savedId = created?.id
+    } else {
+      await updateArtist(artist.id, {
+        name: name.trim(),
+        name_jp: nameJp.trim() || null,
+        color,
+        top_song_title: topSongTitle.trim() || null,
+        top_song_title_jp: topSongTitleJp.trim() || null,
+        top_song_youtube_url: topSongUrl.trim() || null,
+        youtube_channel_id: trimmedChannelId,
+      })
+      savedId = artist.id
     }
     
-    setSaving(true)
-    try {
-      if (isNew) {
-        await createArtist({
-          name: name.trim(),
-          nameJp: nameJp.trim() || null,
-          color,
-          topSongTitle: topSongTitle.trim() || null,
-          topSongTitleJp: topSongTitleJp.trim() || null,
-          topSongYoutubeUrl: topSongUrl.trim() || null,
-          youtubeChannelId: youtubeChannelId.trim() || null,
-        })
-      } else {
-        await updateArtist(artist.id, {
-          name: name.trim(),
-          name_jp: nameJp.trim() || null,
-          color,
-          top_song_title: topSongTitle.trim() || null,
-          top_song_title_jp: topSongTitleJp.trim() || null,
-          top_song_youtube_url: topSongUrl.trim() || null,
-          youtube_channel_id: youtubeChannelId.trim() || null,
-        })
-      }
-      alert(isNew ? '추가 완료' : '수정 완료')
-      onDone()
-    } catch (err) {
-      alert('수정 중 오류: ' + err.message)
-    } finally {
-      setSaving(false)
+    // 채널 ID가 새로 등록되거나 변경됐으면 YouTube 정보 동기화
+    if (savedId && (isNew || channelIdChanged) && trimmedChannelId !== undefined) {
+      const { syncArtistYouTubeData } = await import('../lib/youtube')
+      await syncArtistYouTubeData(savedId, trimmedChannelId)
     }
+    
+    alert(isNew ? '추가 완료' : '수정 완료')
+    onDone()
+  } catch (err) {
+    alert('수정 중 오류: ' + err.message)
+  } finally {
+    setSaving(false)
   }
+}
   
   const colorOptions = [
     { color: '#e91e63', label: 'J-POP 핑크' },

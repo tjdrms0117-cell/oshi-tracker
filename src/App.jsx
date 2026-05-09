@@ -8,6 +8,7 @@ import ConcertDetail from './ConcertDetail'
 import ArtistDetail from './ArtistDetail'
 import VenueDetail from './VenueDetail'
 import FestivalDetail from './FestivalDetail'
+import MyPage from './MyPage'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -65,13 +66,17 @@ export default function App() {
           element={<VenueDetail session={session} />}
         />
         <Route
-          path="/festivals/:id"
-          element={<FestivalDetail session={session} />}
-        />
-        <Route
-          path="/login"
-          element={session ? <Navigate to="/" replace /> : <AuthScreen />}
-        />
+  path="/festivals/:id"
+  element={<FestivalDetail session={session} />}
+/>
+<Route
+  path="/mypage"
+  element={session ? <MyPage session={session} /> : <Navigate to="/login" replace />}
+/>
+<Route
+  path="/login"
+  element={session ? <Navigate to="/" replace /> : <AuthScreen />}
+/>
       </Routes>
     </BrowserRouter>
   )

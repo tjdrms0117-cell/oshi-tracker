@@ -1,6 +1,6 @@
 import { Star, Music, Edit3, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function ArtistCard({ 
   artist, 
@@ -14,20 +14,8 @@ export default function ArtistCard({
   const [oshiLoading, setOshiLoading] = useState(false)
   
   const color = artist.color || '#888'
-  const [profileImg, setProfileImg] = useState(null)
-
-  useEffect(() => {
-    if (!artist.youtube_channel_id) return
-    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
-    if (!apiKey) return
-    fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${artist.youtube_channel_id}&key=${apiKey}`)
-      .then(r => r.json())
-      .then(data => {
-        const thumb = data.items?.[0]?.snippet?.thumbnails?.medium?.url
-        if (thumb) setProfileImg(thumb)
-      })
-      .catch(() => {})
-  }, [artist.youtube_channel_id])
+  // DB에서 읽음 (YouTube API 호출 제거)
+  const profileImg = artist.youtube_thumbnail_url
   
   const handleCardClick = () => {
     navigate(`/artists/${artist.id}`)

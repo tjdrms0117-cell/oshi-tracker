@@ -34,9 +34,18 @@ export default function Header({ profile, session, mode, onModeChange, theme, on
           >
             OSHI TRACKER
           </h1>
-          <p className="text-[10px] tracking-[0.2em] text-pink-500/70 dark:text-pink-400/70 uppercase mt-1">
-            @{profile?.nickname || 'guest'}
-          </p>
+          {isLoggedIn ? (
+  <button
+    onClick={() => window.location.href = '/mypage'}
+    className="text-[10px] tracking-[0.2em] text-pink-500/70 dark:text-pink-400/70 uppercase mt-1 hover:text-pink-500 dark:hover:text-pink-400 transition cursor-pointer"
+  >
+    @{profile?.nickname || 'guest'}
+  </button>
+) : (
+  <p className="text-[10px] tracking-[0.2em] text-pink-500/70 dark:text-pink-400/70 uppercase mt-1">
+    @guest
+  </p>
+)}
         </div>
 
         {/* 우측 액션 영역 */}

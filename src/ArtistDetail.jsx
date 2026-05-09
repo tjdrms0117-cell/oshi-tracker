@@ -25,34 +25,10 @@ export default function ArtistDetail({ session }) {
   const [loading, setLoading] = useState(true)
   const [oshiLoading, setOshiLoading] = useState(false)
   const [festivals, setFestivals] = useState([])
-  const [profileImg, setProfileImg] = useState(null)
-  const [bannerImg, setBannerImg] = useState(null)
 
   useEffect(() => {
     loadData()
   }, [id, session])
-  
-  // 유튜브 채널 정보 (프로필 + 배너)
-  useEffect(() => {
-    if (!artist?.youtube_channel_id) {
-      setProfileImg(null)
-      setBannerImg(null)
-      return
-    }
-    const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY
-    if (!apiKey) return
-    fetch(`https://www.googleapis.com/youtube/v3/channels?part=snippet,brandingSettings&id=${artist.youtube_channel_id}&key=${apiKey}`)
-      .then(r => r.json())
-      .then(data => {
-        const item = data.items?.[0]
-        if (!item) return
-        const thumb = item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url
-        const banner = item.brandingSettings?.image?.bannerExternalUrl
-if (thumb) setProfileImg(thumb)
-if (banner) setBannerImg(`${banner}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffffff-no-nd-rj`)
-      })
-      .catch(() => {})
-  }, [artist?.youtube_channel_id])
   
   const loadData = async () => {
     setLoading(true)
@@ -162,6 +138,9 @@ if (banner) setBannerImg(`${banner}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffff
   }
   
   const color = artist.color || '#888'
+  // DB에 저장된 YouTube 정보 사용 (API 호출 X)
+  const profileImg = artist.youtube_thumbnail_url || null
+  const bannerImg = artist.youtube_banner_url || null
   const oshiArtistIds = oshiList.map(o => o.artist_id)
   const attendingConcertIds = attendingList.map(a => a.concert_id)
   const isOshi = oshiArtistIds.includes(artist.id)
@@ -186,23 +165,34 @@ if (banner) setBannerImg(`${banner}=w2560-fcrop64=1,00005a57ffffa5a8-k-c0xffffff
     <div className="min-h-screen bg-stone-50 dark:bg-zinc-950 transition-colors">
       
       {/* 상단 헤더 (유튜브 배너 or 그라디언트) */}
-      <div className="relative pb-20 overflow-hidden">
+      <div className="relative pb-20 overflow-hidden" style={{ minHeight: '320px' }}>
         {/* 배경 레이어 */}
         {bannerImg ? (
           <>
+            {/* 블러 배경 (양옆 채우기) */}
             <div 
               className="absolute inset-0"
               style={{
                 backgroundImage: `url(${bannerImg})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
+                filter: 'blur(40px) brightness(0.5)',
+                transform: 'scale(1.1)',
               }}
             />
-            {/* 어두운 오버레이 (가독성) */}
+            {/* 원본 배너 (비율 유지, 가운데 정렬) */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <img
+                src={bannerImg}
+                alt=""
+                className="w-full h-auto max-h-full object-contain"
+              />
+            </div>
+            {/* 하단 그라디언트 (텍스트 가독성) */}
             <div 
-              className="absolute inset-0"
+              className="absolute inset-x-0 bottom-0 h-2/3"
               style={{
-                background: `linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.65) 60%, ${color}40 100%)`,
+                background: `linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 70%, ${color}60 100%)`,
               }}
             />
           </>
