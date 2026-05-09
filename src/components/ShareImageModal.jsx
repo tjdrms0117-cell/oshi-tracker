@@ -2,7 +2,16 @@ import { useEffect, useRef, useState, useMemo, forwardRef } from 'react'
 import { X, Download, Share2, Loader, ChevronDown } from 'lucide-react'
 import { toPng } from 'html-to-image'
 
-export default function ShareImageModal({ 
+// 외부 이미지 URL을 CORS 안전한 프록시로 감싸기
+function proxyImage(url) {
+  if (!url) return null
+  // Supabase Storage는 그대로 (이미 CORS 허용)
+  if (url.includes('supabase.co')) return url
+  // 외부 이미지는 프록시 거치기
+  return `https://images.weserv.nl/?url=${encodeURIComponent(url.replace(/^https?:\/\//, ''))}`
+}
+
+export default function ShareImageModal({
   nickname,
   upcomingConcerts = [],
   pastConcerts = [],
@@ -47,33 +56,51 @@ export default function ShareImageModal({
   
   // 이미지 생성
   const generateImage = async () => {
-    if (!cardRef.current) return null
-    return await toPng(cardRef.current, {
-      pixelRatio: 2,
-      cacheBust: true,
-      backgroundColor: '#0f0a1f',
-    })
-  }
+  if (!cardRef.current) return null
+  return await toPng(cardRef.current, {
+    pixelRatio: 2,
+    cacheBust: true,
+    backgroundColor: '#0f0a1f',
+    fetchRequestInit: { mode: 'cors' },
+  })
+}
   
   const handleDownload = async () => {
-    setGenerating(true)
-    try {
-      const dataUrl = await generateImage()
-      if (!dataUrl) return
-      const link = document.createElement('a')
-      const fileName = tab === 'concerts' 
-        ? `oshi-tracker-${selectedYear}-concerts.png`
-        : `oshi-tracker-oshi.png`
-      link.download = fileName
-      link.href = dataUrl
-      link.click()
-    } catch (err) {
-      console.error('이미지 생성 실패:', err)
-      alert('이미지 생성에 실패했어요. 다시 시도해주세요.')
-    } finally {
-      setGenerating(false)
+  setGenerating(true)
+  try {
+    const dataUrl = await generateImage()
+    if (!dataUrl) return
+    const fileName = tab === 'concerts' 
+      ? `oshi-tracker-${selectedYear}-concerts.png`
+      : `oshi-tracker-oshi.png`
+    
+    // 모바일이면 공유 시트로 (갤러리 저장 가능)
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    if (isMobile && navigator.share) {
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      const file = new File([blob], fileName, { type: 'image/png' })
+      
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'OSHI TRACKER' })
+        return
+      }
     }
+    
+    // PC 또는 공유 미지원: 일반 다운로드
+    const link = document.createElement('a')
+    link.download = fileName
+    link.href = dataUrl
+    link.click()
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('이미지 저장 실패:', err)
+      alert('이미지 저장에 실패했어요. 다시 시도해주세요.')
+    }
+  } finally {
+    setGenerating(false)
   }
+}
   
   const handleShare = async () => {
     setGenerating(true)
@@ -392,8 +419,8 @@ function ConcertMiniCard({ concert, isPast }) {
         width: '100%',
         aspectRatio: '3/4',
         background: concert.poster_url 
-          ? `url(${concert.poster_url}) center/cover`
-          : `linear-gradient(135deg, ${concert.artist?.color || '#666'}, ${concert.artist?.color || '#333'}dd)`,
+  ? `url(${proxyImage(concert.poster_url)}) center/cover`
+  : `linear-gradient(135deg, ${concert.artist?.color || '#666'}, ${concert.artist?.color || '#333'}dd)`,
         position: 'relative',
       }}>
         {/* 국가 뱃지 */}
@@ -506,8 +533,8 @@ function OshiMiniCard({ artist }) {
         borderRadius: '50%',
         overflow: 'hidden',
         background: artist.youtube_thumbnail_url
-          ? `url(${artist.youtube_thumbnail_url}) center/cover`
-          : `linear-gradient(135deg, ${color}, ${color}dd)`,
+  ? `url(${proxyImage(artist.youtube_thumbnail_url)}) center/cover`
+  : `linear-gradient(135deg, ${color}, ${color}dd)`,
         marginBottom: '4px',
         border: `2px solid ${color}`,
       }} />
