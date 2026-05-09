@@ -6,8 +6,8 @@ import { getProfile } from './lib/auth'
 import { supabase } from './lib/supabase'
 
 const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']
-const TIMETABLE_START = 11
-const TIMETABLE_END = 25
+const TIMETABLE_START = 12
+const TIMETABLE_END = 23
 const SLOT_HEIGHT = 60
 
 export default function FestivalDetail({ session }) {
