@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   ArrowLeft, User, Edit2, Check, X, LogOut, 
-  Calendar, Star, Music, MessageCircle, Mail, Loader,
+  Calendar, Star, Music, MessageCircle, Mail, Loader, Share2,
 } from 'lucide-react'
 import { 
   fetchMyProfile,
@@ -17,6 +17,7 @@ import {
 import { signOut } from './lib/auth'
 import ConcertCard from './components/ConcertCard'
 import ArtistCard from './components/ArtistCard'
+import ShareImageModal from './components/ShareImageModal'
 
 export default function MyPage({ session }) {
   const navigate = useNavigate()
@@ -37,6 +38,7 @@ export default function MyPage({ session }) {
   
   // 제보 탭
   const [submissionTab, setSubmissionTab] = useState('concert') // concert | artist | festival
+  const [showShareModal, setShowShareModal] = useState(false)
 
   useEffect(() => {
     if (!session?.user) {
@@ -126,9 +128,15 @@ export default function MyPage({ session }) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const upcomingAttending = attendingList
-    .filter(a => a.concert && new Date(a.concert.date) >= today)
-    .map(a => a.concert)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+  .filter(a => a.concert && new Date(a.concert.date) >= today)
+  .map(a => a.concert)
+  .sort((a, b) => new Date(a.date) - new Date(b.date))
+
+// 다녀온 공연 (이미지 공유용)
+const pastAttending = attendingList
+  .filter(a => a.concert && new Date(a.concert.date) < today)
+  .map(a => a.concert)
+  .sort((a, b) => new Date(a.date) - new Date(b.date))
   
   // 오시 아티스트
   const oshiArtists = oshiList.map(o => o.artist).filter(Boolean)
@@ -246,78 +254,52 @@ export default function MyPage({ session }) {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
-        </section>
-        
-        {/* 문의 답변 섹션 (답변 있을 때만) */}
-        {inquiries.length > 0 && (
-          <section className="rounded-2xl bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 p-5">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3">
+          
+          {/* 내 문의 버튼 */}
+          <button
+            onClick={() => navigate('/mypage/inquiries')}
+            className="mt-4 w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-pink-50 to-cyan-50 dark:from-pink-950/30 dark:to-cyan-950/30 border border-pink-200/60 dark:border-pink-800/40 hover:border-pink-300 dark:hover:border-pink-700 transition"
+          >
+            <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-pink-500" />
-              내 문의 ({inquiries.length})
+              <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">
+                내 문의
+              </span>
+              {inquiries.length > 0 && (
+                <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
+                  {inquiries.length}
+                </span>
+              )}
               {repliedInquiries.length > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300 font-bold">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500 text-white font-bold">
                   답변 {repliedInquiries.length}
                 </span>
               )}
-            </h2>
-            
-            <div className="space-y-3">
-              {inquiries.map(inq => (
-                <div 
-                  key={inq.id} 
-                  className="rounded-xl border border-stone-200 dark:border-zinc-800 p-3"
-                >
-                  {/* 내 문의 */}
-                  <div className="flex items-start gap-2">
-                    <MessageCircle className="w-3.5 h-3.5 text-zinc-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">
-                        {inq.content}
-                      </div>
-                      <div className="text-[10px] text-zinc-400 mt-1">
-                        {new Date(inq.created_at).toLocaleDateString('ko', {
-                          year: 'numeric', month: 'long', day: 'numeric'
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* 관리자 답변 */}
-                  {inq.admin_reply ? (
-                    <div className="mt-3 pl-5 border-l-2 border-pink-300 dark:border-pink-700">
-                      <div className="flex items-center gap-1 text-[11px] font-bold text-pink-600 dark:text-pink-400 mb-1">
-                        <span>💬 운영자 답변</span>
-                      </div>
-                      <div className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap break-words">
-                        {inq.admin_reply}
-                      </div>
-                      {inq.replied_at && (
-                        <div className="text-[10px] text-zinc-400 mt-1">
-                          {new Date(inq.replied_at).toLocaleDateString('ko', {
-                            year: 'numeric', month: 'long', day: 'numeric'
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="mt-2 text-[11px] text-zinc-400 italic">
-                      답변 대기 중...
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
-          </section>
-        )}
+            <span className="text-zinc-400">→</span>
+          </button>
+        </section>
+        
         
         {/* 갈 거예요 */}
         <section>
-          <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-3 px-1">
-            <Calendar className="w-4 h-4 text-emerald-500" />
-            갈 거예요 ({upcomingAttending.length})
-          </h2>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+              <Calendar className="w-4 h-4 text-emerald-500" />
+              갈 거예요 ({upcomingAttending.length})
+            </h2>
+            {(upcomingAttending.length > 0 || oshiArtists.length > 0) && (
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-gradient-to-r from-pink-500 to-cyan-500 text-white shadow-sm hover:shadow-md transition"
+              >
+                <Share2 className="w-3 h-3" />
+                이미지로 공유
+              </button>
+            )}
+          </div>
           {upcomingAttending.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {upcomingAttending.map(concert => (
                 <ConcertCard
                   key={concert.id}
@@ -344,7 +326,7 @@ export default function MyPage({ session }) {
             내 오시 ({oshiArtists.length})
           </h2>
           {oshiArtists.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               {oshiArtists.map(artist => (
                 <ArtistCard
                   key={artist.id}
@@ -371,41 +353,74 @@ export default function MyPage({ session }) {
           </h2>
           
           {/* 제보 탭 */}
-          <div className="flex gap-1.5 mb-3">
-            <button
-              onClick={() => setSubmissionTab('concert')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                submissionTab === 'concert'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
-              }`}
-            >
-              공연 {submissionCounts.concert}
-            </button>
-            <button
-              onClick={() => setSubmissionTab('artist')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                submissionTab === 'artist'
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
-              }`}
-            >
-              가수 {submissionCounts.artist}
-            </button>
-            <button
-              onClick={() => setSubmissionTab('festival')}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                submissionTab === 'festival'
-                  ? 'bg-cyan-500 text-white'
-                  : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
-              }`}
-            >
-              🎪 페스 {submissionCounts.festival}
-            </button>
-          </div>
-          
-          {/* 제보 목록 */}
-          {currentSubs.length > 0 ? (
+<div className="flex gap-1.5 mb-3">
+  <button
+    onClick={() => setSubmissionTab('concert')}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+      submissionTab === 'concert'
+        ? 'bg-pink-500 text-white'
+        : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+    }`}
+  >
+    공연 {submissionCounts.concert}
+  </button>
+  <button
+    onClick={() => setSubmissionTab('artist')}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+      submissionTab === 'artist'
+        ? 'bg-pink-500 text-white'
+        : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+    }`}
+  >
+    가수 {submissionCounts.artist}
+  </button>
+  <button
+    onClick={() => setSubmissionTab('festival')}
+    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition ${
+      submissionTab === 'festival'
+        ? 'bg-cyan-500 text-white'
+        : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-stone-200 dark:border-zinc-800'
+    }`}
+  >
+    🎪 페스 {submissionCounts.festival}
+  </button>
+</div>
+
+{/* 상태별 카운트 */}
+{currentSubs.length > 0 && (
+  <div className="flex items-center gap-3 mb-3 px-1 text-[11px]">
+    {(() => {
+      const pending = currentSubs.filter(s => (s.status || 'pending') === 'pending').length
+      const approved = currentSubs.filter(s => s.status === 'approved').length
+      const rejected = currentSubs.filter(s => s.status === 'rejected').length
+      return (
+        <>
+          {pending > 0 && (
+            <span className="flex items-center gap-1 font-bold text-amber-700 dark:text-amber-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              검수중 {pending}
+            </span>
+          )}
+          {approved > 0 && (
+            <span className="flex items-center gap-1 font-bold text-emerald-700 dark:text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              승인 {approved}
+            </span>
+          )}
+          {rejected > 0 && (
+            <span className="flex items-center gap-1 font-bold text-red-600 dark:text-red-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              반려 {rejected}
+            </span>
+          )}
+        </>
+      )
+    })()}
+  </div>
+)}
+
+{/* 제보 목록 */}
+{currentSubs.length > 0 ? (
             <div className="space-y-2">
               {currentSubs.map(sub => (
                 <SubmissionRow key={sub.id} submission={sub} type={submissionTab} />
@@ -423,6 +438,17 @@ export default function MyPage({ session }) {
           )}
         </section>
       </div>
+      
+      {/* 이미지 공유 모달 */}
+      {showShareModal && (
+  <ShareImageModal
+    nickname={profile?.nickname || 'guest'}
+    upcomingConcerts={upcomingAttending}
+    pastConcerts={pastAttending}
+    oshiArtists={oshiArtists}
+    onClose={() => setShowShareModal(false)}
+  />
+)}
     </div>
   )
 }

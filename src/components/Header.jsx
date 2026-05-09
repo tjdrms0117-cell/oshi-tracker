@@ -37,14 +37,27 @@ export default function Header({ profile, session, mode, onModeChange, theme, on
           {isLoggedIn ? (
   <button
     onClick={() => window.location.href = '/mypage'}
-    className="text-[10px] tracking-[0.2em] text-pink-500/70 dark:text-pink-400/70 uppercase mt-1 hover:text-pink-500 dark:hover:text-pink-400 transition cursor-pointer"
+    className="group inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-50 to-cyan-50 dark:from-pink-950/30 dark:to-cyan-950/30 border border-pink-200/60 dark:border-pink-800/40 hover:border-pink-300 dark:hover:border-pink-700 hover:shadow-sm transition-all"
   >
-    @{profile?.nickname || 'guest'}
+    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-pink-400 to-cyan-400 flex items-center justify-center">
+      <UserIcon className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+    </div>
+    <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-200">
+      {profile?.nickname || 'guest'}
+    </span>
+    <span className="text-[9px] text-zinc-400 dark:text-zinc-500 group-hover:text-pink-500 dark:group-hover:text-pink-400 transition">
+      →
+    </span>
   </button>
 ) : (
-  <p className="text-[10px] tracking-[0.2em] text-pink-500/70 dark:text-pink-400/70 uppercase mt-1">
-    @guest
-  </p>
+  <div className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-full bg-stone-100 dark:bg-zinc-800/50 border border-stone-200 dark:border-zinc-700">
+    <div className="w-4 h-4 rounded-full bg-stone-300 dark:bg-zinc-700 flex items-center justify-center">
+      <UserIcon className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+    </div>
+    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
+      guest
+    </span>
+  </div>
 )}
         </div>
 

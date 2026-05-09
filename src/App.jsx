@@ -9,6 +9,7 @@ import ArtistDetail from './ArtistDetail'
 import VenueDetail from './VenueDetail'
 import FestivalDetail from './FestivalDetail'
 import MyPage from './MyPage'
+import MyInquiriesPage from './MyInquiriesPage'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -72,6 +73,10 @@ export default function App() {
 <Route
   path="/mypage"
   element={session ? <MyPage session={session} /> : <Navigate to="/login" replace />}
+/>
+<Route
+  path="/mypage/inquiries"
+  element={session ? <MyInquiriesPage session={session} /> : <Navigate to="/login" replace />}
 />
 <Route
   path="/login"

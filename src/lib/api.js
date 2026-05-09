@@ -421,7 +421,7 @@ export async function removeFromOshi(userId, artistId) {
 export async function fetchMyAttendingList(userId) {
   const { data, error } = await supabase
     .from('attending_list')
-    .select('*, concert:concerts(*, artist:artists(*))')
+    .select('*, concert:concerts(*, artist:artists(*), venue:venues(*), ticket_rounds(*))')
     .eq('user_id', userId)
   
   if (error) throw error
