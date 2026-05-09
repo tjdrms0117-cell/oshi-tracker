@@ -378,9 +378,12 @@ export default function ConcertDetail({ session }) {
                   const isPast = status === 'past'
 
                   return (
-                    <div 
+                    <div
                       key={round.id}
-                      className={`p-3 rounded-lg border ${
+                      onClick={() => round.ticket_url && window.open(round.ticket_url, '_blank')}
+                      className={`p-3 rounded-lg border transition ${
+                        round.ticket_url ? 'cursor-pointer hover:shadow-md' : ''
+                      } ${
                         isOngoing
                           ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700'
                           : isUpcoming
@@ -436,6 +439,7 @@ export default function ConcertDetail({ session }) {
                             href={round.ticket_url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
                             className={`inline-flex items-center gap-1 mt-1 text-[11px] font-bold hover:underline ${
                               isOngoing ? 'text-emerald-600' : 'text-pink-600'
                             }`}

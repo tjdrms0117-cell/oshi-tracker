@@ -35,7 +35,7 @@ const VALID_TABS = ['concerts', 'calendar', 'artists', 'venues', 'submit', 'revi
 
 export default function MainApp({ session, theme, onThemeChange }) {
   const [profile, setProfile] = useState(null)
-  const [mode, setMode] = useState('user')
+  const [mode, setMode] = useState(() => localStorage.getItem('oshi_mode') || 'user')
   const [searchParams, setSearchParams] = useSearchParams()
 
   // 탭 + 국가를 URL searchParams로 관리 → 새로고침/뒤로가기 모두 유지
@@ -325,7 +325,10 @@ export default function MainApp({ session, theme, onThemeChange }) {
           profile={profile}
           session={session}
           mode={mode}
-          onModeChange={setMode}
+          onModeChange={(newMode) => {
+            setMode(newMode)
+            localStorage.setItem('oshi_mode', newMode)
+          }}
           theme={theme}
           onThemeChange={onThemeChange}
         />
