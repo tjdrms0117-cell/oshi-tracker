@@ -42,10 +42,10 @@ export default function ShareImageModal({
   const gridCols = useMemo(() => {
   const n = items.length
   if (n <= 4) return n === 1 ? 1 : Math.min(n, 3)
-  if (n <= 9) return 2
-  if (n <= 16) return 3
-  if (n <= 25) return 4
-  if (n <= 36) return 5
+  if (n <= 9) return 3
+  if (n <= 16) return 4
+  if (n <= 25) return 5
+  if (n <= 36) return 6
   return 7
 }, [items.length])
   
