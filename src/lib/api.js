@@ -1232,3 +1232,32 @@ export async function fetchMyInquiries(userId) {
   if (error) throw error
   return data || []
 }
+// ============================================
+// 페스티벌 갈게요
+// ============================================
+
+export async function fetchMyFestivalAttending(userId) {
+  const { data, error } = await supabase
+    .from('festival_attending')
+    .select('*, festival:festivals(*)')
+    .eq('user_id', userId)
+  if (error) throw error
+  return data || []
+}
+
+export async function addToFestivalAttending(userId, festivalId, date) {
+  const { error } = await supabase
+    .from('festival_attending')
+    .insert({ user_id: userId, festival_id: festivalId, date })
+  if (error) throw error
+}
+
+export async function removeFromFestivalAttending(userId, festivalId, date) {
+  const { error } = await supabase
+    .from('festival_attending')
+    .delete()
+    .eq('user_id', userId)
+    .eq('festival_id', festivalId)
+    .eq('date', date)
+  if (error) throw error
+}

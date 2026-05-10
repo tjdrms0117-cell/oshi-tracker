@@ -7,6 +7,7 @@ export default function Calendar({
   festivals = [],
   attendingConcertIds = [],
   oshiArtistIds = [],
+  festivalAttendingIds = [],  // [{festival_id, date}] 형태
 }) {
   const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -90,26 +91,42 @@ if (round.close_at) {
       })
     })
     
-    // 페스티벌 날짜 추가 (내 일정 탭에서는 제외)
-    if (filter !== 'mine') if (filter !== 'mine') {
-      festivals.forEach(fest => {
-        const start = new Date(fest.date)
-        const end = fest.end_date ? new Date(fest.end_date) : new Date(fest.date)
-        const cur = new Date(start)
-        while (cur <= end) {
-          if (cur.getFullYear() === year && cur.getMonth() === month) {
-            const day = cur.getDate()
+    // 페스티벌 날짜 추가
+    const festsToShow = filter === 'mine'
+      ? festivals.filter(f => festivalAttendingIds.some(a => a.festival_id === f.id))
+      : festivals
+
+    if (festsToShow.length > 0) {
+      festsToShow.forEach(fest => {
+        // 내 일정: 선택한 날짜만 표시
+        const datesToShow = filter === 'mine'
+          ? festivalAttendingIds.filter(a => a.festival_id === fest.id).map(a => a.date)
+          : (() => {
+              const dates = []
+              const start = new Date(fest.date)
+              const end = fest.end_date ? new Date(fest.end_date) : new Date(fest.date)
+              const cur = new Date(start)
+              while (cur <= end) {
+                dates.push(cur.toISOString().slice(0, 10))
+                cur.setDate(cur.getDate() + 1)
+              }
+              return dates
+            })()
+
+        datesToShow.forEach(dateStr => {
+          const d = new Date(dateStr)
+          if (d.getFullYear() === year && d.getMonth() === month) {
+            const day = d.getDate()
             if (!events[day]) events[day] = { live: [], tickets: [], festivals: [] }
             if (!events[day].festivals) events[day].festivals = []
             events[day].festivals.push(fest)
           }
-          cur.setDate(cur.getDate() + 1)
-        }
+        })
       })
     }
 
     return events
-  }, [filteredConcerts, festivals, year, month])
+  }, [filteredConcerts, festivals, festivalAttendingIds, year, month])
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -281,7 +298,7 @@ if (round.close_at) {
                     </div>
                   )}
                   
-                  {filter === 'mine' && hasEvents && (
+                  {filter === 'mine' && (hasEvents || events.festivals?.length > 0) && (
                     <div className="absolute inset-0 flex flex-col gap-0.5 overflow-hidden">
                       {events.live.map((c, i) => (
                         <div key={c.id} className="absolute inset-0 rounded overflow-hidden">
@@ -300,6 +317,21 @@ if (round.close_at) {
                           
                         </div>
                       ))}
+                      {events.festivals?.length > 0 && events.live.length === 0 && (
+                        <div className="absolute inset-0 rounded overflow-hidden">
+                          {events.festivals[0].poster_url ? (
+                            <img src={events.festivals[0].poster_url} alt={events.festivals[0].name}
+                              className="w-full h-full object-contain"
+                              style={{ background: '#06b6d420' }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[9px] font-bold"
+                              style={{ background: '#06b6d415', color: '#0e7490', borderLeft: '3px solid #06b6d4' }}>
+                              🎪 {events.festivals[0].name}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {ticketCount > 0 && (
                         <div className="absolute bottom-1 left-1">
                           <TicketBadgeGroup tickets={events.tickets} />

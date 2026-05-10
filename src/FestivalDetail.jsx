@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ChevronLeft, MapPin, Ticket, ExternalLink, Check, Clock, X } from 'lucide-react'
-import { fetchFestivalById, fetchMyFestivalPicks, toggleFestivalPick } from './lib/api'
+import { fetchFestivalById, fetchMyFestivalPicks, toggleFestivalPick, fetchMyFestivalAttending, addToFestivalAttending, removeFromFestivalAttending } from './lib/api'
 import { getProfile } from './lib/auth'
 import { supabase } from './lib/supabase'
 
@@ -20,6 +20,8 @@ export default function FestivalDetail({ session }) {
   const [editingArtist, setEditingArtist] = useState(null) // { fa, mode: 'time' }
   const [editForm, setEditForm] = useState({ start_time: '', end_time: '', stage: '' })
   const [saving, setSaving] = useState(false)
+  const [isAttending, setIsAttending] = useState(false)
+  const [attendingLoading, setAttendingLoading] = useState(false)
 
   useEffect(() => { loadFestival() }, [id])
 
@@ -27,6 +29,9 @@ export default function FestivalDetail({ session }) {
     if (session?.user) {
       getProfile(session.user.id).then(p => setIsAdmin(p?.is_admin === true)).catch(() => {})
       fetchMyFestivalPicks(session.user.id, id).then(setPicks).catch(() => {})
+      fetchMyFestivalAttending(session.user.id).then(list => {
+        setIsAttending(list.some(a => a.festival_id === id))
+      }).catch(() => {})
     }
   }, [session, id])
 
@@ -52,6 +57,23 @@ export default function FestivalDetail({ session }) {
     }
   }
 
+  const handleToggleAttending = async () => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
+    if (attendingLoading) return
+    setAttendingLoading(true)
+    try {
+      if (isAttending) {
+        await removeFromFestivalAttending(session.user.id, id)
+      } else {
+        await addToFestivalAttending(session.user.id, id)
+      }
+      setIsAttending(!isAttending)
+    } catch (err) {
+      alert('오류: ' + err.message)
+    } finally {
+      setAttendingLoading(false)
+    }
+  }
   const handleArtistClick = (fa) => {
     if (isAdmin) {
       setEditingArtist(fa)
@@ -212,6 +234,18 @@ export default function FestivalDetail({ session }) {
                 <ExternalLink className="w-3.5 h-3.5" />공식 페이지
               </a>
             )}
+          <button
+              onClick={handleToggleAttending}
+              disabled={attendingLoading}
+              className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition ${
+                isAttending
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-stone-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              {isAttending ? '갈게요 등록됨' : '갈게요'}
+            </button>
           </div>
         </div>
 

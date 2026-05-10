@@ -6,9 +6,12 @@ export default function ConcertList({
   festivals = [],
   oshiArtistIds = [],
   attendingConcertIds = [],
+  festivalAttendingIds = [],
+  festivalAttendingList = [],
   isAdmin = false,
   onToggleAttending,
   onToggleAttendingDays,
+  onToggleFestivalAttending,
   onEdit,
   onDelete,
   onEditFestival,
@@ -35,6 +38,8 @@ export default function ConcertList({
             festival={festival}
             isAdmin={isAdmin}
             onEdit={onEditFestival}
+            attendingDates={festivalAttendingList?.filter(a => a.festival_id === festival.id).map(a => a.date) || []}
+            onToggleAttending={onToggleFestivalAttending}
           />
         ))}
       </div>

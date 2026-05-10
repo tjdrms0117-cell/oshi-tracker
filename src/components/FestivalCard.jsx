@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Ticket, Pencil, Users } from 'lucide-react'
+import { Ticket, Pencil, X } from 'lucide-react'
 
-export default function FestivalCard({ festival, isAdmin, onEdit }) {
+export default function FestivalCard({ festival, isAdmin, onEdit, attendingDates = [], onToggleAttending }) {
   const navigate = useNavigate()
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   const formatDate = (d) => {
     if (!d) return ''
@@ -110,7 +112,7 @@ export default function FestivalCard({ festival, isAdmin, onEdit }) {
 
         {/* 티켓팅 바 */}
         {(activeTicket || nextTicket) && (
-          <div className="rounded px-1.5 py-1 text-[9px] font-bold flex items-center gap-1 mt-auto"
+          <div className="rounded px-1.5 py-1 text-[9px] font-bold flex items-center gap-1"
             style={{
               background: activeTicket ? '#06b6d420' : '#f0fdf4',
               color: activeTicket ? '#0e7490' : '#16a34a',
@@ -120,7 +122,75 @@ export default function FestivalCard({ festival, isAdmin, onEdit }) {
             {activeTicket ? `${activeTicket.round_name} 접수중` : `${nextTicket.round_name} 예정`}
           </div>
         )}
+
+        {/* 갈게요 버튼 */}
+        {onToggleAttending && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              // 당일공연이면 바로 토글
+              if (!festival.end_date || festival.end_date === festival.date) {
+                onToggleAttending(festival.id, festival.date, attendingDates?.includes(festival.date))
+              } else {
+                setShowDatePicker(true)
+              }
+            }}
+            className={`mt-auto w-full flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition ${
+              attendingDates?.length > 0
+                ? 'bg-emerald-500 text-white'
+                : 'bg-stone-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+            }`}
+          >
+            ✓ {attendingDates?.length > 0 ? `${attendingDates.length}일 갈게요` : '갈게요'}
+          </button>
+        )}
       </div>
+    {/* 날짜 선택 모달 */}
+      {showDatePicker && (() => {
+        const dates = []
+        if (festival.date && festival.end_date && festival.end_date !== festival.date) {
+          const cur = new Date(festival.date)
+          const end = new Date(festival.end_date)
+          while (cur <= end) {
+            dates.push(cur.toISOString().slice(0, 10))
+            cur.setDate(cur.getDate() + 1)
+          }
+        } else if (festival.date) {
+          dates.push(festival.date)
+        }
+        return (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center backdrop-blur-sm"
+            onClick={(e) => { e.stopPropagation(); setShowDatePicker(false) }}>
+            <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full max-w-sm shadow-2xl p-4"
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{festival.name}</div>
+                <button onClick={() => setShowDatePicker(false)} className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 text-zinc-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="text-xs text-zinc-500 mb-3">가는 날짜를 선택하세요</div>
+              <div className="space-y-2">
+                {dates.map((dateStr, idx) => {
+                  const d = new Date(dateStr)
+                  const label = dates.length > 1 ? `DAY${idx + 1} · ${d.getMonth() + 1}/${d.getDate()}(${['일','월','화','수','목','금','토'][d.getDay()]})` : `${d.getMonth() + 1}/${d.getDate()}(${['일','월','화','수','목','금','토'][d.getDay()]})`
+                  const going = attendingDates?.includes(dateStr)
+                  return (
+                    <button key={dateStr}
+                      onClick={() => onToggleAttending(festival.id, dateStr, going)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold transition ${
+                        going ? 'bg-emerald-500 text-white' : 'bg-stone-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+                      }`}>
+                      <span>{label}</span>
+                      <span>{going ? '✓ 갈게요' : '갈게요'}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

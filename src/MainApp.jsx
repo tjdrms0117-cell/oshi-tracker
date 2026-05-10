@@ -13,6 +13,9 @@ import {
   fetchArtistsWithCounts,
   fetchVenues,
   fetchPendingFestivalSubmissions,
+  fetchMyFestivalAttending,
+  addToFestivalAttending,
+  removeFromFestivalAttending,
 } from './lib/api'
 import Header from './components/Header'
 import CountryToggle from './components/CountryToggle'
@@ -84,6 +87,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [editFestival, setEditFestival] = useState(null)
   const [loading, setLoading] = useState(true)
   const [inquiryOpen, setInquiryOpen] = useState(false)
+  const [festivalAttendingList, setFestivalAttendingList] = useState([])
 
   useEffect(() => {
     if (session?.user) {
@@ -110,16 +114,18 @@ export default function MainApp({ session, theme, onThemeChange }) {
       setFestivals(festivalsData)
 
       if (session?.user) {
-        const [submissionsData, oshiData, attendingData, festivalSubData] = await Promise.all([
+        const [submissionsData, oshiData, attendingData, festivalSubData, festivalAttendingData] = await Promise.all([
           fetchSubmissions().catch(() => []),
           fetchMyOshiList(session.user.id).catch(() => []),
           fetchMyAttendingList(session.user.id).catch(() => []),
           fetchPendingFestivalSubmissions().catch(() => []),
+          fetchMyFestivalAttending(session.user.id).catch(() => []),
         ])
         setSubmissions(submissionsData)
         setOshiList(oshiData)
         setAttendingList(attendingData)
         setPendingFestivalCount(festivalSubData.length)
+        setFestivalAttendingList(festivalAttendingData)
       }
     } catch (err) {
       console.error('데이터 로드 실패:', err)
@@ -194,6 +200,20 @@ export default function MainApp({ session, theme, onThemeChange }) {
     }
   }
 
+  const handleToggleFestivalAttending = async (festivalId, date, currentlyAttending) => {
+    if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
+    try {
+      if (currentlyAttending) {
+        await removeFromFestivalAttending(session.user.id, festivalId, date)
+      } else {
+        await addToFestivalAttending(session.user.id, festivalId, date)
+      }
+      const newList = await fetchMyFestivalAttending(session.user.id)
+      setFestivalAttendingList(newList)
+    } catch (err) {
+      alert('처리 중 오류가 발생했어요')
+    }
+  }
   const isAdmin = profile?.is_admin === true
   
   const oshiArtistIds = oshiList.map(o => o.artist_id)
@@ -377,9 +397,12 @@ export default function MainApp({ session, theme, onThemeChange }) {
                 onEditFestival={(fest) => setEditFestival(fest)}
                 oshiArtistIds={oshiArtistIds}
                 attendingConcertIds={attendingConcertIds}
+                festivalAttendingIds={festivalAttendingList}
+                festivalAttendingList={festivalAttendingList}
                 isAdmin={mode === 'admin' && isAdmin}
                 onToggleAttending={handleToggleAttending}
                 onToggleAttendingDays={handleToggleAttendingDays}
+                onToggleFestivalAttending={handleToggleFestivalAttending}
                 onEdit={handleEditConcert}
                 onDelete={handleDeleteConcert}
                 emptyMessage={
@@ -404,6 +427,7 @@ export default function MainApp({ session, theme, onThemeChange }) {
               festivals={festivals}
               attendingConcertIds={attendingConcertIds}
               oshiArtistIds={oshiArtistIds}
+              festivalAttendingIds={festivalAttendingList}
             />
           )}
 
