@@ -227,7 +227,7 @@ if (round.close_at) {
         </div>
         
         {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7 auto-rows-[80px] md:auto-rows-[140px]">
+        <div className="grid grid-cols-7 auto-rows-[70px] md:auto-rows-[140px]">
           {cells.map((day, idx) => {
             if (day === null) {
               return (
