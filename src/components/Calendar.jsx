@@ -90,21 +90,23 @@ if (round.close_at) {
       })
     })
     
-    // 페스티벌 날짜 추가
-    festivals.forEach(fest => {
-      const start = new Date(fest.date)
-      const end = fest.end_date ? new Date(fest.end_date) : new Date(fest.date)
-      const cur = new Date(start)
-      while (cur <= end) {
-        if (cur.getFullYear() === year && cur.getMonth() === month) {
-          const day = cur.getDate()
-          if (!events[day]) events[day] = { live: [], tickets: [], festivals: [] }
-          if (!events[day].festivals) events[day].festivals = []
-          events[day].festivals.push(fest)
+    // 페스티벌 날짜 추가 (내 일정 탭에서는 제외)
+    if (filter !== 'mine') if (filter !== 'mine') {
+      festivals.forEach(fest => {
+        const start = new Date(fest.date)
+        const end = fest.end_date ? new Date(fest.end_date) : new Date(fest.date)
+        const cur = new Date(start)
+        while (cur <= end) {
+          if (cur.getFullYear() === year && cur.getMonth() === month) {
+            const day = cur.getDate()
+            if (!events[day]) events[day] = { live: [], tickets: [], festivals: [] }
+            if (!events[day].festivals) events[day].festivals = []
+            events[day].festivals.push(fest)
+          }
+          cur.setDate(cur.getDate() + 1)
         }
-        cur.setDate(cur.getDate() + 1)
-      }
-    })
+      })
+    }
 
     return events
   }, [filteredConcerts, festivals, year, month])
@@ -225,7 +227,7 @@ if (round.close_at) {
         </div>
         
         {/* 날짜 그리드 */}
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7 auto-rows-[80px] md:auto-rows-[140px]">
           {cells.map((day, idx) => {
             if (day === null) {
               return (
@@ -268,30 +270,40 @@ if (round.close_at) {
                 }`}
               >
                 <div className="p-1.5 h-full flex flex-col">
-                  <div className={`text-xs font-medium ${
-                    isToday ? 'text-pink-600 dark:text-pink-400 font-bold' :
-                    dayOfWeek === 0 ? 'text-pink-500' :
-                    dayOfWeek === 6 ? 'text-cyan-500' :
-                    'text-zinc-700 dark:text-zinc-300'
-                  }`}>
-                    {day}
-                  </div>
+                  {!(filter === 'mine' && events.live.length > 0 && events.live[0].poster_url) && (
+                    <div className={`text-xs font-medium ${
+                      isToday ? 'text-pink-600 dark:text-pink-400 font-bold' :
+                      dayOfWeek === 0 ? 'text-pink-500' :
+                      dayOfWeek === 6 ? 'text-cyan-500' :
+                      'text-zinc-700 dark:text-zinc-300'
+                    }`}>
+                      {day}
+                    </div>
+                  )}
                   
                   {filter === 'mine' && hasEvents && (
-                    <div className="mt-1 flex-1 flex flex-col justify-end overflow-hidden gap-0.5">
-                      {events.live.length > 0 && (
-                        <MyEventLabel event={{ type: 'live', concert: events.live[0] }} filterMode="mine" />
-                      )}
-                      {events.live.length > 1 && (
-                        <div className="text-[8px] font-bold text-zinc-500 dark:text-zinc-400">
-                          +{events.live.length - 1}
+                    <div className="absolute inset-0 flex flex-col gap-0.5 overflow-hidden">
+                      {events.live.map((c, i) => (
+                        <div key={c.id} className="absolute inset-0 rounded overflow-hidden">
+                          {c.poster_url ? (
+                            <img src={c.poster_url} alt={c.artist?.name}
+                              className="w-full h-full object-contain"
+                              style={{ background: '#111' }}
+                              onError={e => e.target.style.display='none'}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[9px] font-bold rounded"
+                              style={{ background: `${c.artist?.color || '#888'}20`, color: c.artist?.color || '#888', borderLeft: `3px solid ${c.artist?.color || '#888'}` }}>
+                              {c.artist?.name}
+                            </div>
+                          )}
+                          
                         </div>
-                      )}
-                      {ticketCount === 1 && (
-                        <MyEventLabel event={{ type: 'ticket', concert: events.tickets[0].concert, round: events.tickets[0].round, ticketType: events.tickets[0].ticketType }} filterMode="mine" />
-                      )}
-                      {ticketCount > 1 && (
-                        <TicketBadgeGroup tickets={events.tickets} />
+                      ))}
+                      {ticketCount > 0 && (
+                        <div className="absolute bottom-1 left-1">
+                          <TicketBadgeGroup tickets={events.tickets} />
+                        </div>
                       )}
                     </div>
                   )}
@@ -499,14 +511,14 @@ function TicketBadgeGroup({ tickets }) {
           style={{
             background: `${color}20`,
             border: `1px solid ${color}50`,
-            height: '18px',
-            padding: '0 4px',
-            minWidth: '18px',
+            height: '22px',
+            padding: '0 6px',
+            minWidth: '22px',
           }}
         >
-          <Ticket className="w-2.5 h-2.5" style={{ color }} />
+          <Ticket className="w-3.5 h-3.5" style={{ color }} />
           {count > 1 && (
-            <span className="text-[8px] font-bold leading-none" style={{ color }}>
+            <span className="text-[10px] font-bold leading-none" style={{ color }}>
               {count}
             </span>
           )}

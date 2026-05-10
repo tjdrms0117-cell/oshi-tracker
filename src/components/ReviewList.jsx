@@ -12,9 +12,10 @@ import {
   updateInquiryStatus,
 } from '../lib/api'
 import ReviewModal from './ReviewModal'
+import KopisMatcher from './KopisMatcher'
 
 export default function ReviewList({ session }) {
-  const [tab, setTab] = useState('concert') // concert | artist | festival | inquiry
+  const [tab, setTab] = useState('concert') // concert | artist | festival | inquiry | kopis
   const [submissions, setSubmissions] = useState([])
   const [artistSubmissions, setArtistSubmissions] = useState([])
   const [festivalSubmissions, setFestivalSubmissions] = useState([])
@@ -131,6 +132,14 @@ export default function ReviewList({ session }) {
           }`}
         >
           페스티벌 {festivalSubmissions.length > 0 && `(${festivalSubmissions.length})`}
+        </button>
+        <button
+          onClick={() => setTab('kopis')}
+          className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition ${
+            tab === 'kopis' ? 'bg-cyan-500 text-white' : 'bg-white border border-stone-200 text-zinc-500'
+          }`}
+        >
+          KOPIS 자동입력
         </button>
         <button
           onClick={() => setTab('inquiry')}
@@ -461,6 +470,9 @@ export default function ReviewList({ session }) {
             </div>
           )}
         </>
+      )}
+      {tab === 'kopis' && (
+        <KopisMatcher session={session} />
       )}
       {selectedSubmission && (
         <ReviewModal
