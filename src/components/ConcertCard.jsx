@@ -178,6 +178,30 @@ export default function ConcertCard({
           {artist && (
             <p className="text-[9px] font-bold tracking-wider truncate" style={{ color }}>
               {artist.name}
+              {concert.co_artist && (
+                <span className="text-zinc-400"> × </span>
+              )}
+              {concert.co_artist && (
+                <span style={{ color: concert.co_artist.color || color }}>
+                  {concert.co_artist.name}
+                </span>
+              )}
+              {concert.co_artist_2 && (
+                <span className="text-zinc-400"> × </span>
+              )}
+              {concert.co_artist_2 && (
+                <span style={{ color: concert.co_artist_2.color || color }}>
+                  {concert.co_artist_2.name}
+                </span>
+              )}
+              {concert.co_artist_3 && (
+                <span className="text-zinc-400"> × </span>
+              )}
+              {concert.co_artist_3 && (
+                <span style={{ color: concert.co_artist_3.color || color }}>
+                  {concert.co_artist_3.name}
+                </span>
+              )}
             </p>
           )}
 

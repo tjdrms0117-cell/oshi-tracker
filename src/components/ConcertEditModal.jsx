@@ -6,6 +6,7 @@ import {
   replaceTicketRounds,
   updateVenue,
   fetchConcertById,
+  fetchArtists,
 } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
@@ -18,6 +19,7 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
   const [showVenueDetails, setShowVenueDetails] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [artists, setArtists] = useState([])
   
   const [day2Concert, setDay2Concert] = useState(null)
   const [day2Date, setDay2Date] = useState('')
@@ -51,6 +53,9 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         poster_url: c.poster_url || '',
         organizer: c.organizer || '',
         max_tickets_per_person: c.max_tickets_per_person || '',
+        co_artist_id: c.co_artist_id || '',
+        co_artist_id_2: c.co_artist_id_2 || '',
+        co_artist_id_3: c.co_artist_id_3 || '',
       })
       setPosterPreview(c.poster_url || '')
       setEditedRounds((c.ticket_rounds || [])
@@ -82,6 +87,9 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
       
       const v = await fetchVenues({ country: c.country })
       setVenues(v)
+
+      const allArtists = await fetchArtists()
+      setArtists(allArtists)
 
       if (c.series_id && c.day_label === 'DAY1') {
         const { data: day2 } = await supabase
@@ -151,6 +159,9 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         poster_url: editedData.poster_url || null,
         organizer: editedData.organizer || null,
         max_tickets_per_person: editedData.max_tickets_per_person ? parseInt(editedData.max_tickets_per_person) : null,
+        co_artist_id: editedData.co_artist_id || null,
+        co_artist_id_2: editedData.co_artist_id_2 || null,
+        co_artist_id_3: editedData.co_artist_id_3 || null,
       })
 
       if (day2Concert) {
@@ -253,6 +264,23 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
           <Section icon={Calendar} title="공연 정보">
             <div className="space-y-2">
               <Input label="제목" value={editedData.title} onChange={v => setEditedData({...editedData, title: v})} />
+              {/* 공동 아티스트 */}
+              <div className="space-y-1.5 p-2.5 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-900">
+                <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400">공동 아티스트 (투맨/합동)</p>
+                {['co_artist_id', 'co_artist_id_2', 'co_artist_id_3'].map((field, i) => (
+                  <select
+                    key={field}
+                    value={editedData[field] || ''}
+                    onChange={e => setEditedData({...editedData, [field]: e.target.value})}
+                    className="w-full px-2.5 py-1.5 rounded text-xs bg-white dark:bg-zinc-900 border border-purple-200 dark:border-purple-800 outline-none focus:border-purple-400"
+                  >
+                    <option value="">— {i === 0 ? '2번째' : i === 1 ? '3번째' : '4번째'} 아티스트 (선택) —</option>
+                    {artists.map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                ))}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Input label={day2Concert ? 'DAY1 날짜' : '날짜'} type="date" value={editedData.date} onChange={v => setEditedData({...editedData, date: v})} />
                 <Input label={day2Concert ? 'DAY1 시간' : '시간'} type="time" value={editedData.time} onChange={v => setEditedData({...editedData, time: v})} />

@@ -290,7 +290,19 @@ export default function ConcertDetail({ session }) {
 
           <div className="text-sm font-bold tracking-wider mb-2" style={{ color }}>
             {artist?.name}
+            {concert.co_artist && (
+              <span style={{ color: concert.co_artist.color || color }}> × {concert.co_artist.name}</span>
+            )}
+            {concert.co_artist_2 && (
+              <span style={{ color: concert.co_artist_2.color || color }}> × {concert.co_artist_2.name}</span>
+            )}
+            {concert.co_artist_3 && (
+              <span style={{ color: concert.co_artist_3.color || color }}> × {concert.co_artist_3.name}</span>
+            )}
             {artist?.name_jp && <span className="opacity-60"> · {artist.name_jp}</span>}
+            {concert.co_artist?.name_jp && <span className="opacity-60" style={{ color: concert.co_artist.color || color }}> · {concert.co_artist.name_jp}</span>}
+            {concert.co_artist_2?.name_jp && <span className="opacity-60" style={{ color: concert.co_artist_2.color || color }}> · {concert.co_artist_2.name_jp}</span>}
+            {concert.co_artist_3?.name_jp && <span className="opacity-60" style={{ color: concert.co_artist_3.color || color }}> · {concert.co_artist_3.name_jp}</span>}
           </div>
 
           <h1 className="text-2xl font-black mb-6 leading-tight text-zinc-900 dark:text-zinc-100">
@@ -489,7 +501,37 @@ export default function ConcertDetail({ session }) {
             </Section>
           )}
 
-          {artist?.top_song_title && (
+          {(concert.co_artist || concert.co_artist_2 || concert.co_artist_3) ? (
+          <Section icon={Music} title="아티스트">
+            <div className="flex flex-col gap-2">
+              {[concert.artist, concert.co_artist, concert.co_artist_2, concert.co_artist_3]
+                .filter(Boolean)
+                .map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => navigate(`/artists/${a.id}`)}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 dark:border-zinc-700 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
+                    style={{ borderLeftColor: a.color || '#888', borderLeftWidth: 3 }}
+                  >
+                    {a.youtube_thumbnail_url ? (
+                      <img src={a.youtube_thumbnail_url} alt={a.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: `${a.color || '#888'}20` }}>
+                        <Music className="w-4 h-4" style={{ color: a.color || '#888' }} />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100" style={{ color: a.color || '#888' }}>
+                        {a.name}
+                      </div>
+                      {a.name_jp && <div className="text-xs text-zinc-500 truncate">{a.name_jp}</div>}
+                    </div>
+                    <ArrowLeft className="w-4 h-4 text-zinc-400 rotate-180 flex-shrink-0" />
+                  </button>
+                ))}
+            </div>
+          </Section>
+          ) : artist?.top_song_title && (
             <Section icon={Music} title="대표곡">
               <div>
                 <div className="mb-3">
