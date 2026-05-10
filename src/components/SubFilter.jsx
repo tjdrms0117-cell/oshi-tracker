@@ -1,4 +1,5 @@
 import { Star, Check, List, Archive, Search, X, Music } from 'lucide-react'
+import { useState } from 'react'
 
 const FILTERS = [
   { id: 'attending', label: '내 공연', icon: Check },
@@ -9,19 +10,29 @@ const FILTERS = [
 ]
 
 export default function SubFilter({ activeFilter, onFilterChange, counts = {}, searchQuery = '', onSearchChange }) {
+  const [localQuery, setLocalQuery] = useState(searchQuery)
+  const [isComposing, setIsComposing] = useState(false)
   return (
     <div className="mb-4 space-y-2">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
         <input
           type="text"
-          value={searchQuery}
-          onChange={(e) => onSearchChange?.(e.target.value)}
+          value={localQuery}
+          onChange={(e) => {
+            setLocalQuery(e.target.value)
+            if (!isComposing) onSearchChange?.(e.target.value)
+          }}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={(e) => {
+            setIsComposing(false)
+            onSearchChange?.(e.target.value)
+          }}
           placeholder="공연명 또는 가수 검색..."
           className="w-full pl-9 pr-9 py-2 rounded-full text-sm bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 outline-none focus:border-pink-300 dark:focus:border-pink-700 transition text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
         />
         {searchQuery && (
-          <button onClick={() => onSearchChange?.('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+          <button onClick={() => { setLocalQuery(''); onSearchChange?.('') }} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
             <X className="w-3.5 h-3.5" />
           </button>
         )}

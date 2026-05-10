@@ -497,6 +497,20 @@ export default function ConcertDetail({ session }) {
                 {venue?.capacity && (
                   <InfoRow icon={Users} label="수용 인원">{venue.capacity.toLocaleString()}명</InfoRow>
                 )}
+                {venue?.address && (
+                  <a
+                    href={concert.country === 'japan'
+                      ? `https://www.google.com/maps/search/${encodeURIComponent((venue.name_local || venue.name) + ' ' + venue.address)}`
+                      : `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-1 text-[11px] text-cyan-600 hover:underline"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    {concert.country === 'japan' ? 'Google 지도에서 보기' : '네이버 지도에서 보기'}
+                  </a>
+                )}
               </div>
             </Section>
           )}

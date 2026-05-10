@@ -61,8 +61,11 @@ export default function VenueDetail({ session }) {
     .filter(c => new Date(c.date) < today)
     .sort((a, b) => new Date(b.date) - new Date(a.date))
 
-  const naverMapUrl = venue.address
-    ? `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
+  const isJapan = venue.country === 'japan'
+  const mapUrl = venue.address
+    ? isJapan
+      ? `https://www.google.com/maps/search/${encodeURIComponent(venue.name_local || venue.name + ' ' + venue.address)}`
+      : `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
     : null
 
   return (
@@ -119,15 +122,15 @@ export default function VenueDetail({ session }) {
                 <span>{venue.capacity.toLocaleString()}명</span>
               </div>
             )}
-            {naverMapUrl && (
+            {mapUrl && (
               <a
-                href={naverMapUrl}
+                href={mapUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 mt-2 text-[11px] text-cyan-600 hover:underline"
               >
                 <ExternalLink className="w-3 h-3" />
-                네이버 지도에서 보기
+                {isJapan ? 'Google 지도에서 보기' : '네이버 지도에서 보기'}
               </a>
             )}
           </div>

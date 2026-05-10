@@ -1135,6 +1135,7 @@ export async function approveFestivalSubmission(submissionId, reviewerId) {
       const rows = sub.artists.map(a => ({
         festival_id: newFest.id,
         artist_id: a.artist_id,
+        performance_date: a.performance_date || null,
       }))
       await supabase.from('festival_artists').insert(rows)
     }

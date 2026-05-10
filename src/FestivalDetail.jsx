@@ -103,9 +103,24 @@ export default function FestivalDetail({ session }) {
   const now = new Date()
   const tickets = festival.ticket_rounds || []
 
-  const dateKeys = [...new Set(allArtists.map(fa => fa.performance_date).filter(Boolean))].sort()
+  const dateKeys = (() => {
+    const fromArtists = [...new Set(allArtists.map(fa => fa.performance_date).filter(Boolean))].sort()
+    if (fromArtists.length > 0) return fromArtists
+    if (festival.date && festival.end_date && festival.end_date !== festival.date) {
+      const dates = []
+      const cur = new Date(festival.date)
+      const end = new Date(festival.end_date)
+      while (cur <= end) {
+        dates.push(cur.toISOString().slice(0, 10))
+        cur.setDate(cur.getDate() + 1)
+      }
+      return dates
+    }
+    return fromArtists
+  })()
   const tbaArtists = allArtists.filter(fa => !fa.performance_date)
-  const isMultiDay = dateKeys.length > 1
+  const isMultiDay = dateKeys.length > 1 || 
+    (festival.date && festival.end_date && festival.end_date !== festival.date)
 
   const getDayLabel = (key, idx) => {
     const d = new Date(key)
@@ -134,7 +149,19 @@ export default function FestivalDetail({ session }) {
     return h >= 24 ? `${h - 24}:00` : `${h}:00`
   })
 
-  const cols = dateKeys.length > 0 ? dateKeys : ['tba']
+  const cols = (() => {
+    if (festival.date && festival.end_date && festival.end_date !== festival.date) {
+      const dates = []
+      const cur = new Date(festival.date)
+      const end = new Date(festival.end_date)
+      while (cur <= end) {
+        dates.push(cur.toISOString().slice(0, 10))
+        cur.setDate(cur.getDate() + 1)
+      }
+      return dates
+    }
+    return dateKeys.length > 0 ? dateKeys : ['tba']
+  })()
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #fafaf7 0%, #f0fdfa 100%)' }}>
@@ -242,7 +269,7 @@ export default function FestivalDetail({ session }) {
             </div>
           </div>
 
-          {allArtists.length === 0 ? (
+          {allArtists.length === 0 && cols[0] === 'tba' ? (
             <div className="px-5 pb-8 text-center text-sm text-zinc-400 py-8">출연진 미정</div>
           ) : (
             <div className="overflow-x-auto px-2">

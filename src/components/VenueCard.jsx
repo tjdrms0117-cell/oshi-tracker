@@ -6,8 +6,11 @@ export default function VenueCard({ venue, isAdmin, onEdit, onDelete }) {
 
   const handleClick = () => navigate(`/venues/${venue.id}`)
 
-  const naverMapUrl = venue.address
-    ? `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
+  const isJapan = venue.country === 'japan'
+  const mapUrl = venue.address
+    ? isJapan
+      ? `https://www.google.com/maps/search/${encodeURIComponent((venue.name_local || venue.name) + ' ' + venue.address)}`
+      : `https://map.naver.com/v5/search/${encodeURIComponent(venue.address)}`
     : null
 
   return (
@@ -67,16 +70,16 @@ export default function VenueCard({ venue, isAdmin, onEdit, onDelete }) {
           )}
         </div>
 
-        {naverMapUrl && (
-         <a 
-            href={naverMapUrl}
+        {mapUrl && (
+          <a
+            href={mapUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 mt-3 text-[11px] text-cyan-600 hover:underline"
           >
             <ExternalLink className="w-3 h-3" />
-            네이버 지도
+            {isJapan ? 'Google 지도' : '네이버 지도'}
           </a>
         )}
       </div>
