@@ -130,10 +130,88 @@ export async function deleteVenue(id) {
 // ============================================
 
 function groupBySeries(data) {
+  // 1단계: 투어로 묶기
+  const tourMap = new Map()
+  const noTour = []
+
+  data.forEach(c => {
+    if (c.tour_id) {
+      if (!tourMap.has(c.tour_id)) tourMap.set(c.tour_id, [])
+      tourMap.get(c.tour_id).push(c)
+    } else {
+      noTour.push(c)
+    }
+  })
+
+  const tourGrouped = []
+  tourMap.forEach(concerts => {
+    const sortedByDate = concerts.sort((a, b) => new Date(a.date) - new Date(b.date))
+    const first = sortedByDate[0]
+
+    // 투어 내 series(양일공연) 처리: 날짜 중복 제거 (DAY2는 표시 안 함)
+    const uniqueDates = []
+const seenSeries = new Set()
+sortedByDate.forEach(c => {
+  if (c.series_id) {
+    if (!seenSeries.has(c.series_id)) {
+      seenSeries.add(c.series_id)
+      // 같은 series의 모든 공연 찾아서 series_dates 붙이기
+      const siblings = sortedByDate.filter(x => x.series_id === c.series_id)
+      uniqueDates.push({
+        ...c,
+        is_series: siblings.length > 1,
+        series_dates: siblings.map(s => ({
+          id: s.id,
+          date: s.date,
+          time: s.time,
+          day_label: s.day_label,
+        })),
+      })
+    }
+  } else {
+    uniqueDates.push(c)
+  }
+})
+
+    const allTicketRounds = sortedByDate.flatMap(c =>
+      (c.ticket_rounds || []).map(r => ({
+        ...r,
+        _concert_date: c.date,
+        _day_label: c.day_label,
+      }))
+    )
+    allTicketRounds.sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+
+    // 도시 목록 (중복 제거)
+    const cities = [...new Set(uniqueDates.map(c => c.venue?.name || c.venue || c.city).filter(Boolean))]
+
+    tourGrouped.push({
+      ...first,
+      is_tour: true,
+      tour_name: first.tour_name || first.title,
+      tour_concerts: uniqueDates.map(c => ({
+        id: c.id,
+        date: c.date,
+        time: c.time,
+        day_label: c.day_label,
+        venue: c.venue,
+        venue_obj: c.venue,
+        city: c.city,
+        series_id: c.series_id,
+        series_dates: c.series_dates,
+        ticket_rounds: c.ticket_rounds,
+      })),
+      tour_cities: cities,
+      ticket_rounds: allTicketRounds,
+      id: first.id,
+    })
+  })
+
+  // 2단계: 나머지(투어 아닌 것)에서 series 묶기
   const seriesMap = new Map()
   const standalone = []
 
-  data.forEach(c => {
+  noTour.forEach(c => {
     if (c.series_id) {
       if (!seriesMap.has(c.series_id)) seriesMap.set(c.series_id, [])
       seriesMap.get(c.series_id).push(c)
@@ -170,7 +248,7 @@ function groupBySeries(data) {
     })
   })
 
-  const all = [...standalone, ...seriesGrouped]
+  const all = [...standalone, ...seriesGrouped, ...tourGrouped]
   all.sort((a, b) => new Date(a.date) - new Date(b.date))
   return all
 }

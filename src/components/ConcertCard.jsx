@@ -24,6 +24,8 @@ export default function ConcertCard({
   const venue = concert.venue
   const color = artist?.color || '#888'
   const ticketRounds = concert.ticket_rounds || []
+  const isTour = concert.is_tour
+  const tourConcerts = concert.tour_concerts || []
   const posterUrl = !posterError && concert.poster_url ? concert.poster_url : null
   
   const today = new Date()
@@ -37,9 +39,16 @@ export default function ConcertCard({
   else if (diffDays > 0) { dDayLabel = `D-${diffDays}`; dDayUrgent = diffDays <= 7 }
   else { dDayLabel = `D+${Math.abs(diffDays)}` }
 
-  const attendingDayCount = concert.is_series && concert.series_dates
+  const attendingDayCount = isTour
+  ? tourConcerts.flatMap(tc => tc.series_dates || [{ id: tc.id }])
+      .filter(d => attendingConcertIds.includes(d.id)).length
+  : concert.is_series && concert.series_dates
     ? concert.series_dates.filter(d => attendingConcertIds.includes(d.id)).length
     : 0
+
+const isAttendingTour = isTour
+  ? attendingDayCount > 0
+  : false
   
   const now = new Date()
   const upcomingRounds = ticketRounds.filter(r => r.open_at && new Date(r.open_at) > now)
@@ -68,21 +77,25 @@ export default function ConcertCard({
   const countryLabel = concert.country === 'korea' ? '내한' : '원정'
   
   const handleAttendingClick = async (e) => {
-    e.stopPropagation()
-    if (attendingLoading) return
-    if (concert.is_series && concert.series_dates?.length > 1) { setShowDayModal(true); return }
-    setAttendingLoading(true)
-    try { await onToggleAttending(concert.id, isAttending) }
-    finally { setAttendingLoading(false) }
-  }
+  e.stopPropagation()
+  if (attendingLoading) return
+  if (concert.is_tour) { setShowDayModal(true); return }
+  if (concert.is_series && concert.series_dates?.length > 1) { setShowDayModal(true); return }
+  setAttendingLoading(true)
+  try { await onToggleAttending(concert.id, isAttending) }
+  finally { setAttendingLoading(false) }
+}
 
   const handleDayModalConfirm = async (toAdd, toRemove) => {
-    setShowDayModal(false)
-    if (!onToggleAttendingDays) return
-    setAttendingLoading(true)
-    try { await onToggleAttendingDays(toAdd, toRemove) }
-    finally { setAttendingLoading(false) }
+  setShowDayModal(false)
+  if (!onToggleAttendingDays) return
+  setAttendingLoading(true)
+  try {
+    await onToggleAttendingDays(toAdd, toRemove)
+  } finally {
+    setAttendingLoading(false)
   }
+}
   
   return (
     <>
@@ -123,11 +136,16 @@ export default function ConcertCard({
             }`}>
               {dDayLabel}
             </span>
-            {concert.is_series && (
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/60 text-white">
-                {concert.series_dates?.length || 2}일
-              </span>
-            )}
+            {concert.is_series && !isTour && (
+  <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-black/60 text-white">
+    {concert.series_dates?.length || 2}일
+  </span>
+)}
+{isTour && (
+  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-violet-500/90 text-white">
+    투어 {tourConcerts.length}
+  </span>
+)}
           </div>
 
           {/* 우상단 액션 */}
@@ -137,8 +155,8 @@ export default function ConcertCard({
                 onClick={handleAttendingClick}
                 disabled={attendingLoading}
                 className={`flex items-center gap-0.5 p-1.5 rounded-full backdrop-blur-sm transition-all ${
-                  isAttending ? 'bg-emerald-500 text-white shadow' : 'bg-black/40 text-white'
-                }`}
+  (isAttending || isAttendingTour) ? 'bg-emerald-500 text-white shadow' : 'bg-black/40 text-white'
+}`}
               >
                 <Check className="w-3 h-3" strokeWidth={isAttending ? 3 : 2} />
                 {concert.is_series && attendingDayCount > 0 && (
@@ -212,28 +230,48 @@ export default function ConcertCard({
           {/* 날짜 / 장소 + 매수제한 */}
           <div className="flex items-end gap-1">
             <div className="flex-1 min-w-0 space-y-0.5 text-[9px] text-zinc-500 dark:text-zinc-400">
-              {concert.is_series && concert.series_dates ? (
-                <div className="space-y-0.5">
-                  {concert.series_dates.map((d) => (
-                    <div key={d.id} className="flex items-center gap-1">
-                      <span className="font-bold text-[8px] min-w-[22px]" style={{ color }}>{d.day_label || ''}</span>
-                      <span className="truncate">{d.date.slice(5)}{d.time && ` · ${d.time.slice(0, 5)}`}</span>
-                      {attendingConcertIds.includes(d.id) && (
-                        <Check className="w-2 h-2 text-emerald-500 ml-auto" strokeWidth={3} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
-                  <span className="truncate">{concert.date}{concert.time && ` · ${concert.time.slice(0, 5)}`}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
-                <span className="truncate">{(venue?.name || concert.venue) || '미정'}</span>
-              </div>
+              {isTour ? (
+  <div className="space-y-0.5">
+    <div className="flex items-center gap-1">
+      <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+      <span className="truncate">
+        {tourConcerts[0]?.date?.slice(5)} ~ {tourConcerts[tourConcerts.length - 1]?.date?.slice(5)}
+      </span>
+    </div>
+    <div className="flex items-center gap-1">
+      <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+      <span className="truncate">
+        {concert.tour_cities?.[0]}
+        {concert.tour_cities?.length > 1 && (
+          <span className="text-violet-500 font-bold"> 외 {concert.tour_cities.length - 1}곳</span>
+        )}
+      </span>
+    </div>
+  </div>
+) : concert.is_series && concert.series_dates ? (
+  <div className="space-y-0.5">
+    {concert.series_dates.map((d) => (
+      <div key={d.id} className="flex items-center gap-1">
+        <span className="font-bold text-[8px] min-w-[22px]" style={{ color }}>{d.day_label || ''}</span>
+        <span className="truncate">{d.date.slice(5)}{d.time && ` · ${d.time.slice(0, 5)}`}</span>
+        {attendingConcertIds.includes(d.id) && (
+          <Check className="w-2 h-2 text-emerald-500 ml-auto" strokeWidth={3} />
+        )}
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="flex items-center gap-1">
+    <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+    <span className="truncate">{concert.date}{concert.time && ` · ${concert.time.slice(0, 5)}`}</span>
+  </div>
+)}
+{!isTour && (
+  <div className="flex items-center gap-1">
+    <MapPin className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
+    <span className="truncate">{(venue?.name || concert.venue) || '미정'}</span>
+  </div>
+)}
             </div>
             {/* 매수제한 우측 정렬 */}
             {concert.max_tickets_per_person && (
@@ -349,13 +387,16 @@ export default function ConcertCard({
       </div>
 
       {showDayModal && (
-        <AttendingDayModal
-          concert={concert}
-          attendingConcertIds={attendingConcertIds}
-          onConfirm={handleDayModalConfirm}
-          onClose={() => setShowDayModal(false)}
-        />
-      )}
+  <AttendingDayModal
+    concert={concert.is_tour ? {
+      ...concert,
+      tour_concerts: concert.tour_concerts,
+    } : concert}
+    attendingConcertIds={attendingConcertIds}
+    onConfirm={handleDayModalConfirm}
+    onClose={() => setShowDayModal(false)}
+  />
+)}
     </>
   )
 }

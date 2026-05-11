@@ -63,9 +63,12 @@ export default function ConcertList({
     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
       {concerts.map(concert => {
         const isOshi = oshiArtistIds.includes(concert.artist_id)
-        const isAttending = concert.is_series
-          ? concert.series_dates?.some(d => attendingConcertIds.includes(d.id))
-          : attendingConcertIds.includes(concert.id)
+        const isAttending = concert.is_tour
+  ? concert.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id }])
+      .some(d => attendingConcertIds.includes(d.id))
+  : concert.is_series
+    ? concert.series_dates?.some(d => attendingConcertIds.includes(d.id))
+    : attendingConcertIds.includes(concert.id)
 
         return (
           <ConcertCard

@@ -7,6 +7,7 @@ import {
   updateVenue,
   fetchConcertById,
   fetchArtists,
+  fetchConcerts,
 } from '../lib/api'
 import { supabase } from '../lib/supabase'
 
@@ -21,6 +22,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
   const [saving, setSaving] = useState(false)
   const [artists, setArtists] = useState([])
   
+  const [allConcerts, setAllConcerts] = useState([])
+const [tourInput, setTourInput] = useState('') // 투어명
   const [day2Concert, setDay2Concert] = useState(null)
   const [day2Date, setDay2Date] = useState('')
   const [day2Time, setDay2Time] = useState('')
@@ -56,6 +59,8 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
         co_artist_id: c.co_artist_id || '',
         co_artist_id_2: c.co_artist_id_2 || '',
         co_artist_id_3: c.co_artist_id_3 || '',
+        tour_id: c.tour_id || '',
+        tour_name: c.tour_name || '',
       })
       setPosterPreview(c.poster_url || '')
       setEditedRounds((c.ticket_rounds || [])
@@ -90,6 +95,14 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
 
       const allArtists = await fetchArtists()
       setArtists(allArtists)
+      // 투어 드롭다운용: groupBySeries 거치기 전 raw 데이터 필요
+const { data: rawConcerts } = await supabase
+  .from('concerts')
+  .select('id, tour_id, tour_name, artist:artists!concerts_artist_id_fkey(name)')
+  .not('tour_id', 'is', null)
+setAllConcerts(rawConcerts || [])
+setTourInput(c.tour_name || '')
+      setTourInput(c.tour_name || '')
 
       if (c.series_id && c.day_label === 'DAY1') {
         const { data: day2 } = await supabase
@@ -141,65 +154,76 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
   }
   
   const handleSave = async () => {
-    if (saving) return
-    setSaving(true)
-    try {
-      await updateConcert(concertId, {
-        title: editedData.title,
-        venue_id: editedData.venue_id || null,
-        venue: editedData.venue,
-        city: editedData.city,
-        date: editedData.date,
-        time: editedData.time || null,
-        duration_minutes: editedData.duration_minutes ? parseInt(editedData.duration_minutes) : null,
-        seat_type: editedData.seat_type || null,
-        ticket_price: editedData.ticket_price || null,
-        memo: editedData.memo || null,
-        source_url: editedData.source_url || null,
-        poster_url: editedData.poster_url || null,
-        organizer: editedData.organizer || null,
-        max_tickets_per_person: editedData.max_tickets_per_person ? parseInt(editedData.max_tickets_per_person) : null,
-        co_artist_id: editedData.co_artist_id || null,
-        co_artist_id_2: editedData.co_artist_id_2 || null,
-        co_artist_id_3: editedData.co_artist_id_3 || null,
-      })
-
-      if (day2Concert) {
-        await updateConcert(day2Concert.id, {
-          date: day2Date || null,
-          time: day2Time || null,
-        })
-      }
-      
-      const validRounds = editedRounds
-        .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
-        .map(r => ({
-          ...r,
-          open_at: r.open_at || null,
-          close_at: r.close_at && r.close_at.trim() !== '' ? r.close_at : null,
-        }))
-      await replaceTicketRounds(concertId, validRounds)
-      
-      if (editedData.venue_id && (editedVenue.address || editedVenue.subway_info || editedVenue.capacity)) {
-        const venueUpdates = {}
-        if (editedVenue.name_local) venueUpdates.name_local = editedVenue.name_local
-        if (editedVenue.address) venueUpdates.address = editedVenue.address
-        if (editedVenue.subway_info) venueUpdates.subway_info = editedVenue.subway_info
-        if (editedVenue.parking_info) venueUpdates.parking_info = editedVenue.parking_info
-        if (editedVenue.tips) venueUpdates.tips = editedVenue.tips
-        if (editedVenue.capacity) venueUpdates.capacity = parseInt(editedVenue.capacity)
-        if (Object.keys(venueUpdates).length > 0) await updateVenue(editedData.venue_id, venueUpdates)
-      }
-      
-      alert('수정 완료!')
-      onDone()
-    } catch (err) {
-      console.error(err)
-      alert('수정 중 오류: ' + err.message)
-    } finally {
-      setSaving(false)
+  if (saving) return
+  setSaving(true)
+  try {
+    // 투어명 있고 tour_id 없으면 새 UUID 생성
+    let finalTourId = editedData.tour_id || null
+    if (tourInput.trim() && !finalTourId) {
+      finalTourId = crypto.randomUUID()
     }
+    if (!tourInput.trim()) {
+      finalTourId = null
+    }
+
+    await updateConcert(concertId, {
+      title: editedData.title,
+      venue_id: editedData.venue_id || null,
+      venue: editedData.venue,
+      city: editedData.city,
+      date: editedData.date,
+      time: editedData.time || null,
+      duration_minutes: editedData.duration_minutes ? parseInt(editedData.duration_minutes) : null,
+      seat_type: editedData.seat_type || null,
+      ticket_price: editedData.ticket_price || null,
+      memo: editedData.memo || null,
+      source_url: editedData.source_url || null,
+      poster_url: editedData.poster_url || null,
+      organizer: editedData.organizer || null,
+      max_tickets_per_person: editedData.max_tickets_per_person ? parseInt(editedData.max_tickets_per_person) : null,
+      co_artist_id: editedData.co_artist_id || null,
+      co_artist_id_2: editedData.co_artist_id_2 || null,
+      co_artist_id_3: editedData.co_artist_id_3 || null,
+      tour_id: finalTourId,
+      tour_name: tourInput.trim() || null,
+    })
+
+    if (day2Concert) {
+      await updateConcert(day2Concert.id, {
+        date: day2Date || null,
+        time: day2Time || null,
+      })
+    }
+    
+    const validRounds = editedRounds
+      .filter(r => r.round_name && (!r.concert_id || r.concert_id === concertId))
+      .map(r => ({
+        ...r,
+        open_at: r.open_at || null,
+        close_at: r.close_at && r.close_at.trim() !== '' ? r.close_at : null,
+      }))
+    await replaceTicketRounds(concertId, validRounds)
+    
+    if (editedData.venue_id && (editedVenue.address || editedVenue.subway_info || editedVenue.capacity)) {
+      const venueUpdates = {}
+      if (editedVenue.name_local) venueUpdates.name_local = editedVenue.name_local
+      if (editedVenue.address) venueUpdates.address = editedVenue.address
+      if (editedVenue.subway_info) venueUpdates.subway_info = editedVenue.subway_info
+      if (editedVenue.parking_info) venueUpdates.parking_info = editedVenue.parking_info
+      if (editedVenue.tips) venueUpdates.tips = editedVenue.tips
+      if (editedVenue.capacity) venueUpdates.capacity = parseInt(editedVenue.capacity)
+      if (Object.keys(venueUpdates).length > 0) await updateVenue(editedData.venue_id, venueUpdates)
+    }
+    
+    alert('수정 완료!')
+    onDone()
+  } catch (err) {
+    console.error(err)
+    alert('수정 중 오류: ' + err.message)
+  } finally {
+    setSaving(false)
   }
+}
   
   const addRound = () => setEditedRounds([...editedRounds, { round_name: '', open_at: '', close_at: '', result_at: '', method: 'first-come', ticket_site: '', price_info: '', note: '', ticket_url: '' }])
   const removeRound = (idx) => setEditedRounds(editedRounds.filter((_, i) => i !== idx))
@@ -264,6 +288,40 @@ export default function ConcertEditModal({ concertId, onClose, onDone }) {
           <Section icon={Calendar} title="공연 정보">
             <div className="space-y-2">
               <Input label="제목" value={editedData.title} onChange={v => setEditedData({...editedData, title: v})} />
+              {/* 투어 묶기 */}
+<div className="space-y-1.5 p-2.5 bg-violet-50 dark:bg-violet-950/20 rounded-lg border border-violet-200 dark:border-violet-900">
+  <p className="text-[10px] font-bold text-violet-600 dark:text-violet-400">투어 묶기</p>
+  <Input
+    label="투어명 (예: GHOST Tour 2026)"
+    value={tourInput}
+    onChange={v => setTourInput(v)}
+    placeholder="비우면 투어에서 제외"
+  />
+  {tourInput.trim() && (
+    <div>
+      <label className="text-[10px] text-zinc-500 dark:text-zinc-400 mb-0.5 block">같은 투어 ID (비우면 새 투어 생성)</label>
+      <select
+        value={editedData.tour_id || ''}
+        onChange={e => setEditedData({...editedData, tour_id: e.target.value})}
+        className="w-full px-2.5 py-1.5 rounded text-xs bg-white dark:bg-zinc-900 border border-violet-200 dark:border-violet-800 outline-none"
+      >
+        <option value="">— 새 투어 생성 —</option>
+        {[...new Map(
+          allConcerts
+            .filter(c => c.tour_id && c.tour_name)
+            .map(c => [c.tour_id, c])
+        ).values()].map(c => (
+          <option key={c.tour_id} value={c.tour_id}>
+            {c.tour_name} ({c.artist?.name})
+          </option>
+        ))}
+      </select>
+      <p className="text-[9px] text-zinc-400 mt-1">
+        ⚠️ 새 투어 생성 선택 시 저장하면 자동으로 새 UUID 생성됩니다
+      </p>
+    </div>
+  )}
+</div>
               {/* 공동 아티스트 */}
               <div className="space-y-1.5 p-2.5 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-900">
                 <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400">공동 아티스트 (투맨/합동)</p>

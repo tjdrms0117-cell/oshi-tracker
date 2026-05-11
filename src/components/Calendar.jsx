@@ -21,9 +21,11 @@ export default function Calendar({
     if (filter === 'korea') return concerts.filter(c => c.country === 'korea')
     if (filter === 'japan') return concerts.filter(c => c.country === 'japan')
     return concerts.filter(c =>
-      attendingConcertIds.includes(c.id) ||
-      (c.is_series && c.series_dates?.some(d => attendingConcertIds.includes(d.id)))
-    )
+  attendingConcertIds.includes(c.id) ||
+  (c.is_series && c.series_dates?.some(d => attendingConcertIds.includes(d.id))) ||
+  (c.is_tour && c.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id }])
+    .some(d => attendingConcertIds.includes(d.id)))
+)
   }, [concerts, filter, attendingConcertIds])
   
   const isMine = (concert) => attendingConcertIds.includes(concert.id)
@@ -45,12 +47,14 @@ export default function Calendar({
 
     filteredConcerts.forEach(c => {
       // 라이브 날짜
-      const dates = (c.is_series && c.series_dates?.length > 0)
-        ? c.series_dates
-        : [{ date: c.date }]
+      const dates = c.is_tour
+  ? c.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id, date: tc.date }]) || []
+  : (c.is_series && c.series_dates?.length > 0)
+    ? c.series_dates
+    : [{ date: c.date }]
 
       dates.forEach(d => {
-        if (filter === 'mine' && c.is_series && !attendingConcertIds.includes(d.id)) return
+  if (filter === 'mine' && (c.is_series || c.is_tour) && !attendingConcertIds.includes(d.id)) return
         const liveDate = new Date(d.date)
         if (liveDate.getFullYear() === year && liveDate.getMonth() === month) {
           addEvent(liveDate.getDate(), 'live', c)
@@ -58,42 +62,70 @@ export default function Calendar({
       })
       
       // 티켓팅 날짜들 (시작 / 마감 / 결과발표)
-      ;(c.ticket_rounds || []).forEach(round => {
-        // 접수 시작
-        if (round.open_at) {
-          const d = new Date(round.open_at)
-          if (d.getFullYear() === year && d.getMonth() === month) {
-            addEvent(d.getDate(), 'ticket', { concert: c, round, ticketType: 'open' })
-          }
+      // 투어면 내가 attending한 concert_id의 티켓팅만 표시
+const myTourConcertIds = c.is_tour
+  ? (c.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id }]) || [])
+      .filter(d => attendingConcertIds.includes(d.id))
+      .map(d => d.id)
+  : null
+
+;(c.ticket_rounds || []).forEach(round => {
+  // 투어 티켓팅 필터: 내가 attending한 concert_id만
+  if (filter === 'mine' && c.is_tour) {
+  if (!myTourConcertIds || myTourConcertIds.length === 0) return
+  // 내가 attending한 concert들의 series_id 수집
+  const mySeriesIds = c.tour_concerts
+    ?.filter(tc => (tc.series_dates || [{ id: tc.id }]).some(d => attendingConcertIds.includes(d.id)))
+    .map(tc => tc.series_id)
+    .filter(Boolean) || []
+  // 같은 series의 티켓팅만 표시
+  if (round.concert_id) {
+    const roundConcert = c.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id, series_id: tc.series_id }])
+      .find(d => d.id === round.concert_id)
+    const roundSeriesId = roundConcert?.series_id || 
+      c.tour_concerts?.find(tc => (tc.series_dates || []).some(d => d.id === round.concert_id))?.series_id
+    if (roundSeriesId && !mySeriesIds.includes(roundSeriesId)) return
+  }
+}
+
+  // 접수 시작
+  if (round.open_at) {
+    const d = new Date(round.open_at)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      addEvent(d.getDate(), 'ticket', { concert: c, round, ticketType: 'open' })
+    }
+  }
+  // 접수 마감
+  if (round.close_at) {
+    const d = new Date(round.close_at)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      const openDay = round.open_at ? new Date(round.open_at).getDate() : null
+      if (day !== openDay) {
+        const isKoreaClose = c.country === 'korea' && (filter === 'mine' || filter === 'korea')
+        if (!isKoreaClose) {
+          addEvent(day, 'ticket', { concert: c, round, ticketType: 'close' })
         }
-        // 접수 마감
-if (round.close_at) {
-  const d = new Date(round.close_at)
-  if (d.getFullYear() === year && d.getMonth() === month) {
-    const day = d.getDate()
-    const openDay = round.open_at ? new Date(round.open_at).getDate() : null
-    if (day !== openDay) {
-      // 내 일정 탭 + 내한 캘린더에서는 내한 공연 마감 숨김
-      const isKoreaClose = c.country === 'korea' && (filter === 'mine' || filter === 'korea')
-      if (!isKoreaClose) {
-        addEvent(day, 'ticket', { concert: c, round, ticketType: 'close' })
       }
     }
   }
-}
-        // 결과 발표
-        if (round.result_at) {
-          const d = new Date(round.result_at)
-          if (d.getFullYear() === year && d.getMonth() === month) {
-            addEvent(d.getDate(), 'ticket', { concert: c, round, ticketType: 'result' })
-          }
-        }
-      })
+  // 결과 발표
+  if (round.result_at) {
+    const d = new Date(round.result_at)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      addEvent(d.getDate(), 'ticket', { concert: c, round, ticketType: 'result' })
+    }
+  }
+    })
     })
     
     // 페스티벌 날짜 추가
     const festsToShow = filter === 'mine'
-      ? festivals.filter(f => festivalAttendingIds.some(a => a.festival_id === f.id))
+  ? festivals.filter(f => festivalAttendingIds.some(a => a.festival_id === f.id))
+  : filter === 'korea'
+    ? festivals.filter(f => f.country === 'korea')
+    : filter === 'japan'
+      ? festivals.filter(f => f.country === 'japan')
       : festivals
 
     if (festsToShow.length > 0) {
@@ -701,6 +733,19 @@ function DayDetailModal({ date, events, isMine, isOshiArtist, onClose, onConcert
 
 function ModalCard({ type, concert, round, ticketType, ticketTypeLabel, ticketTypeColor, isMine, isOshi, onClick }) {
   const color = concert.artist?.color || '#888'
+
+  const tourVenueLabel = (() => {
+    if (!concert.is_tour || !round?.concert_id) return null
+    const tc = concert.tour_concerts?.find(tc =>
+      (tc.series_dates || [{ id: tc.id }]).some(d => d.id === round.concert_id)
+    )
+    if (!tc) return null
+    const venue = tc.venue_obj?.name || tc.venue || tc.city || ''
+    const dates = tc.series_dates?.length > 1
+      ? `${tc.series_dates[0].date.slice(5)} ~ ${tc.series_dates[tc.series_dates.length - 1].date.slice(5)}`
+      : (tc.series_dates?.[0]?.date || tc.date || '').slice(5)
+    return `${dates}${venue ? ' ' + venue : ''}`
+  })()
   
   // 표시할 시간
   const timeVal = type === 'ticket'
@@ -748,9 +793,9 @@ function ModalCard({ type, concert, round, ticketType, ticketTypeLabel, ticketTy
             </span>
           ) : (
             <span className={`flex items-center gap-1 text-[9px] font-bold tracking-widest px-1.5 py-0.5 rounded ${ticketTypeColor}`}>
-              <Ticket className="w-2.5 h-2.5" />
-              {round?.round_name || '티켓팅'} · {ticketTypeLabel}
-            </span>
+  <Ticket className="w-2.5 h-2.5" />
+  {round?.round_name || '티켓팅'} · {ticketTypeLabel}
+</span>
           )}
           
           {type === 'live' && concert.time && (
@@ -759,10 +804,15 @@ function ModalCard({ type, concert, round, ticketType, ticketTypeLabel, ticketTy
             </span>
           )}
           {type === 'ticket' && timeVal && (
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
-              {new Date(timeVal).toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+  <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">
+    {new Date(timeVal).toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' })}
+  </span>
+)}
+{type === 'ticket' && tourVenueLabel && (
+  <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+    {tourVenueLabel}
+  </span>
+)}
         </div>
         
         <div className="text-xs font-bold mb-0.5" style={{ color }}>

@@ -11,6 +11,7 @@ import {
   addToAttending, removeFromAttending, fetchMyAttendingList,
 } from './lib/api'
 import AttendingDayModal from './components/AttendingDayModal'
+import { supabase } from './lib/supabase'
 
 export default function ConcertDetail({ session }) {
   const { id } = useParams()
@@ -25,6 +26,7 @@ export default function ConcertDetail({ session }) {
   const [attendingLoading, setAttendingLoading] = useState(false)
   const [showDayModal, setShowDayModal] = useState(false)
   const [posterError, setPosterError] = useState(false)
+  const [tourConcerts, setTourConcerts] = useState([])
 
   useEffect(() => {
     loadData()
@@ -34,12 +36,22 @@ export default function ConcertDetail({ session }) {
     setLoading(true)
     try {
       const concertData = await fetchConcertById(id)
-      setConcert(concertData)
+setConcert(concertData)
 
-      if (concertData.series_id) {
-        const siblings = await fetchConcertSeries(concertData.series_id)
-        setSeriesConcerts(siblings)
-      }
+if (concertData.series_id) {
+  const siblings = await fetchConcertSeries(concertData.series_id)
+  setSeriesConcerts(siblings)
+}
+
+// 투어 전체 일정 가져오기
+if (concertData.tour_id) {
+  const { data: tourData } = await supabase
+    .from('concerts')
+    .select('id, title, date, time, day_label, series_id, venue, venue_id, city, venue:venues(name)')
+    .eq('tour_id', concertData.tour_id)
+    .order('date', { ascending: true })
+  setTourConcerts(tourData || [])
+}
 
       if (session?.user) {
         const [oshiList, attendingList] = await Promise.all([
@@ -341,8 +353,59 @@ export default function ConcertDetail({ session }) {
 
         <div className="max-w-3xl mx-auto px-5 pb-10 space-y-4">
           <Section icon={Calendar} title="공연 정보">
-            <div className="space-y-2">
-              {seriesConcerts.length > 1 ? (
+  <div className="space-y-2">
+    {/* 투어 전체 일정 */}
+    {tourConcerts.length > 0 && (
+      <div className="rounded-lg p-3 bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-900 mb-2">
+        <div className="flex items-center gap-1 text-[10px] font-bold text-violet-600 dark:text-violet-400 mb-2">
+          <span>🎸 투어 전체 일정 ({tourConcerts.length}공연)</span>
+        </div>
+        {/* series별로 묶어서 표시 */}
+        {(() => {
+          const seen = new Set()
+          const rows = []
+          tourConcerts.forEach(c => {
+            if (c.series_id) {
+              if (seen.has(c.series_id)) return
+              seen.add(c.series_id)
+              const siblings = tourConcerts.filter(x => x.series_id === c.series_id)
+              const first = siblings[0]
+              const last = siblings[siblings.length - 1]
+              rows.push(
+                <div key={c.series_id} onClick={() => first.id !== id && navigate(`/concerts/${first.id}`, { replace: true })} className={`py-1.5 border-b border-violet-100 dark:border-violet-900/50 last:border-0 ${first.id === id ? 'bg-violet-100 dark:bg-violet-900/30 -mx-3 px-3 rounded' : 'cursor-pointer hover:bg-violet-100/60 dark:hover:bg-violet-900/20 -mx-3 px-3 rounded transition'}`}>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-zinc-500 dark:text-zinc-400 min-w-[80px]">
+                      {first.date.slice(5)} ~ {last.date.slice(5)}
+                    </span>
+                    <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate">
+                      {first.venue?.name || first.venue || first.city || ''}
+                    </span>
+                    <span className="ml-auto text-[10px] text-violet-500 font-bold flex-shrink-0">
+                      {siblings.length}일
+                    </span>
+                  </div>
+                </div>
+              )
+            } else {
+              rows.push(
+                <div key={c.id} onClick={() => c.id !== id && navigate(`/concerts/${c.id}`, { replace: true })} className={`py-1.5 border-b border-violet-100 dark:border-violet-900/50 last:border-0 ${c.id === id ? 'bg-violet-100 dark:bg-violet-900/30 -mx-3 px-3 rounded' : 'cursor-pointer hover:bg-violet-100/60 dark:hover:bg-violet-900/20 -mx-3 px-3 rounded transition'}`}>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-zinc-500 dark:text-zinc-400 min-w-[80px]">
+                      {c.date.slice(5)}{c.time && ` · ${c.time.slice(0, 5)}`}
+                    </span>
+                    <span className="font-bold text-zinc-700 dark:text-zinc-300 truncate">
+                      {c.venue?.name || c.venue || c.city || ''}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
+          })
+          return rows
+        })()}
+      </div>
+    )}
+    {seriesConcerts.length > 1 ? (
                 <div className="rounded-lg p-3 bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900">
                   <div className="flex items-center gap-1 text-[10px] font-bold text-pink-600 dark:text-pink-400 mb-2">
                     <Calendar className="w-3 h-3" />
