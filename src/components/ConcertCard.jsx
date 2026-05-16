@@ -13,6 +13,7 @@ export default function ConcertCard({
   onToggleAttendingDays,
   onEdit,
   onDelete,
+  showPastStyle = false,  // 내 공연 탭에서만 true로 넘김
 }) {
   const navigate = useNavigate()
   const [attendingLoading, setAttendingLoading] = useState(false)
@@ -30,9 +31,36 @@ export default function ConcertCard({
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const concertDate = new Date(concert.date)
-  concertDate.setHours(0, 0, 0, 0)
-  const diffDays = Math.round((concertDate - today) / (1000 * 60 * 60 * 24))
+
+  // D-day 계산용 날짜: 투어/시리즈는 오늘 이후 가장 빠른 날짜 기준
+  const getDDayDate = () => {
+    if (isTour && tourConcerts.length > 0) {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      for (const tc of tourConcerts) {
+        const dates = tc.series_dates?.length > 1 ? tc.series_dates : [{ date: tc.date }]
+        for (const d of dates) {
+          if (d.date > todayStr) return new Date(d.date)
+        }
+      }
+      // 모두 지났으면 마지막 날짜
+      const last = tourConcerts[tourConcerts.length - 1]
+      const lastDate = last.series_dates?.length > 1
+        ? last.series_dates[last.series_dates.length - 1].date
+        : last.date
+      return new Date(lastDate)
+    }
+    if (concert.is_series && concert.series_dates?.length > 0) {
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const upcoming = concert.series_dates.find(d => d.date > todayStr)
+      if (upcoming) return new Date(upcoming.date)
+      return new Date(concert.series_dates[concert.series_dates.length - 1].date)
+    }
+    return new Date(concert.date)
+  }
+
+  const dDayDate = getDDayDate()
+  dDayDate.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((dDayDate - today) / (1000 * 60 * 60 * 24))
   let dDayLabel = ''
   let dDayUrgent = false
   if (diffDays === 0) { dDayLabel = 'D-DAY'; dDayUrgent = true }
@@ -97,11 +125,36 @@ const isAttendingTour = isTour
   }
 }
   
+  // 투어는 아직 미래 공연이 있으면 지난 공연이 아님
+  const isTourAllPast = concert.is_tour
+    ? concert.tour_concerts?.every(tc => {
+        const lastDate = tc.series_dates?.length > 1
+          ? tc.series_dates[tc.series_dates.length - 1].date
+          : tc.date
+        return lastDate < new Date().toISOString().slice(0, 10)
+      })
+    : false
+  const isPast = showPastStyle && (
+    concert.is_tour
+      ? isTourAllPast
+      : new Date(concert.date) < today
+  )
+
   return (
     <>
       <div
-        onClick={() => navigate(`/concerts/${concert.id}`)}
-        className="group relative flex flex-col rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+        onClick={() => {
+          if (isTour && tourConcerts.length > 0) {
+            const todayStr = new Date().toISOString().slice(0, 10)
+            const next = tourConcerts.find(tc => tc.date > todayStr)
+              || tourConcerts.find(tc => tc.date === todayStr)
+              || tourConcerts[tourConcerts.length - 1]
+            navigate(`/concerts/${next.id}`)
+          } else {
+            navigate(`/concerts/${concert.id}`)
+          }
+        }}
+        className={`group relative flex flex-col rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer ${isPast ? 'opacity-60' : ''}`}
       >
         {/* ── 이미지 영역 (3:4) ── */}
         <div className="relative w-full overflow-hidden" style={{ paddingTop: '120%' }}>
@@ -110,7 +163,7 @@ const isAttendingTour = isTour
               src={posterUrl}
               alt={concert.title}
               onError={() => setPosterError(true)}
-              className="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500"
+              className={`absolute inset-0 w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500 ${isPast ? 'grayscale' : ''}`}
             />
           ) : (
             <div
@@ -235,7 +288,13 @@ const isAttendingTour = isTour
     <div className="flex items-center gap-1">
       <Calendar className="w-2.5 h-2.5 text-zinc-400 flex-shrink-0" />
       <span className="truncate">
-        {tourConcerts[0]?.date?.slice(5)} ~ {tourConcerts[tourConcerts.length - 1]?.date?.slice(5)}
+        {tourConcerts[0]?.date?.slice(5)} ~ {(() => {
+          const last = tourConcerts[tourConcerts.length - 1]
+          if (last?.series_dates?.length > 1) {
+            return last.series_dates[last.series_dates.length - 1].date?.slice(5)
+          }
+          return last?.date?.slice(5)
+        })()}
       </span>
     </div>
     <div className="flex items-center gap-1">
@@ -281,8 +340,8 @@ const isAttendingTour = isTour
             )}
           </div>
 
-          {/* 티켓팅 바 (간소화) */}
-          {nextRound && (
+          {/* 티켓팅 바 (내한만 표시) */}
+          {nextRound && concert.country === 'korea' && (
             <div className="mt-0.5">
               <div className={`flex items-center justify-between px-1.5 py-1 rounded text-[9px] ${
                 isOngoing
@@ -373,6 +432,20 @@ const isAttendingTour = isTour
                 </div>
               )}
             </div>
+          )}
+
+          {/* 원정 공연 - 공식 페이지 링크 */}
+          {concert.country === 'japan' && concert.source_url && (
+            <a
+              href={concert.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="mt-0.5 flex items-center justify-between px-1.5 py-1 rounded text-[9px] bg-stone-50 dark:bg-zinc-800/60 border border-stone-200 dark:border-zinc-700"
+            >
+              <span className="text-zinc-500 dark:text-zinc-400 font-bold">🎟️ 티켓 및 상세정보</span>
+              <span className="text-pink-500 font-bold">공식페이지→</span>
+            </a>
           )}
 
           {/* 메모 (VIP/특전 등 짧은 정보) */}

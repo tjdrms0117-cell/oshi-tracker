@@ -17,12 +17,15 @@ export default function FestivalEditModal({ festival, artists = [], onClose, onD
     ticket_price: festival?.ticket_price || '',
     source_url: festival?.source_url || '',
     poster_url: festival?.poster_url || '',
+    timetable_image_url: festival?.timetable_image_url || '',
   })
 
   const [festivalArtists, setFestivalArtists] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadingTimetable, setUploadingTimetable] = useState(false)
+  const timetableFileInputRef = useRef(null)
 
   useEffect(() => {
     if (festival?.festival_artists) {
@@ -84,6 +87,29 @@ export default function FestivalEditModal({ festival, artists = [], onClose, onD
       alert('업로드 실패: ' + err.message)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleTimetableUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingTimetable(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const fileName = `festival_timetable_${Date.now()}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('concert-posters')
+        .upload(fileName, file, { upsert: true })
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('concert-posters')
+        .getPublicUrl(fileName)
+      setForm(f => ({ ...f, timetable_image_url: publicUrl }))
+    } catch (err) {
+      alert('업로드 실패: ' + err.message)
+    } finally {
+      setUploadingTimetable(false)
     }
   }
 
@@ -239,6 +265,47 @@ export default function FestivalEditModal({ festival, artists = [], onClose, onD
               <input value={form.source_url} onChange={e => setForm(f => ({ ...f, source_url: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-sm outline-none focus:border-cyan-400"
                 placeholder="https://..." />
+            </div>
+
+            {/* 타임테이블 이미지 */}
+            <div>
+              <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2 block">타임테이블 이미지</label>
+              <div className="flex gap-2">
+                <div className="w-20 h-20 rounded-lg overflow-hidden bg-stone-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center border border-stone-200 dark:border-zinc-700">
+                  {form.timetable_image_url ? (
+                    <img src={form.timetable_image_url} alt="타임테이블" className="w-full h-full object-cover" />
+                  ) : (
+                    <Image className="w-5 h-5 text-zinc-400" />
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <input
+                    value={form.timetable_image_url}
+                    onChange={e => setForm(f => ({ ...f, timetable_image_url: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-lg border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800 text-xs outline-none focus:border-cyan-400"
+                    placeholder="https://... (URL 직접 입력)"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => timetableFileInputRef.current?.click()}
+                    disabled={uploadingTimetable}
+                    className="w-full py-2 rounded-lg border border-dashed border-stone-300 dark:border-zinc-600 text-xs text-zinc-500 hover:border-cyan-400 hover:text-cyan-500 flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    {uploadingTimetable ? '업로드 중...' : '파일 업로드'}
+                  </button>
+                  <input ref={timetableFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleTimetableUpload} />
+                  {form.timetable_image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, timetable_image_url: '' }))}
+                      className="text-[11px] text-red-500 hover:underline"
+                    >
+                      이미지 제거
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

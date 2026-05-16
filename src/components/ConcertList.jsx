@@ -82,6 +82,7 @@ export default function ConcertList({
             onToggleAttendingDays={onToggleAttendingDays}
             onEdit={onEdit}
             onDelete={onDelete}
+            showPastStyle={activeFilter === 'attending'}
           />
         )
       })}

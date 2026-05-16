@@ -27,10 +27,29 @@ export default function ConcertDetail({ session }) {
   const [showDayModal, setShowDayModal] = useState(false)
   const [posterError, setPosterError] = useState(false)
   const [tourConcerts, setTourConcerts] = useState([])
+  const [tourPosterUrl, setTourPosterUrl] = useState(null)
 
   useEffect(() => {
+    setSeriesConcerts([])
+    setTourConcerts([])
     loadData()
-  }, [id, session])
+  }, [id])
+
+  useEffect(() => {
+    if (!concert) return
+    if (concert.tour_id && !concert.poster_url) {
+      supabase
+        .from('concerts')
+        .select('poster_url')
+        .eq('tour_id', concert.tour_id)
+        .not('poster_url', 'is', null)
+        .limit(1)
+        .single()
+        .then(({ data }) => { if (data?.poster_url) setTourPosterUrl(data.poster_url) })
+    } else {
+      setTourPosterUrl(null)
+    }
+  }, [concert?.id])
 
   const loadData = async () => {
     setLoading(true)
@@ -180,7 +199,7 @@ if (concertData.tour_id) {
   const venue = concert.venue
   const color = artist?.color || '#888'
   const ticketRounds = concert.ticket_rounds || []
-  const posterUrl = !posterError && concert.poster_url ? concert.poster_url : null
+  const posterUrl = !posterError && (concert.poster_url || tourPosterUrl) ? (concert.poster_url || tourPosterUrl) : null
 
   // 티켓팅 상태 분류
   const now = new Date()
@@ -200,9 +219,28 @@ if (concertData.tour_id) {
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const concertDate = new Date(concert.date)
-  concertDate.setHours(0, 0, 0, 0)
-  const diffDays = Math.round((concertDate - today) / (1000 * 60 * 60 * 24))
+  const todayStr = new Date().toISOString().slice(0, 10)
+
+  const getDDayDate = () => {
+    if (tourConcerts.length > 0) {
+      const next = tourConcerts.find(tc => tc.date > todayStr)
+      if (next) return new Date(next.date)
+      const todayShow = tourConcerts.find(tc => tc.date === todayStr)
+      if (todayShow) return new Date(todayShow.date)
+      return new Date(tourConcerts[tourConcerts.length - 1].date)
+    }
+    if (seriesConcerts.length > 1) {
+      const next = seriesConcerts.find(c => c.date > todayStr)
+      if (next) return new Date(next.date)
+      const todayShow = seriesConcerts.find(c => c.date === todayStr)
+      if (todayShow) return new Date(todayShow.date)
+      return new Date(seriesConcerts[seriesConcerts.length - 1].date)
+    }
+    return new Date(concert.date)
+  }
+  const dDayDate = getDDayDate()
+  dDayDate.setHours(0, 0, 0, 0)
+  const diffDays = Math.round((dDayDate - today) / (1000 * 60 * 60 * 24))
   
   let dDayLabel = ''
   if (diffDays === 0) dDayLabel = 'D-DAY'
@@ -453,7 +491,7 @@ if (concertData.tour_id) {
             </div>
           </Section>
 
-          {sortedRounds.length > 0 && (
+          {sortedRounds.length > 0 && concert.country === 'korea' && (
             <Section icon={Ticket} title={`티켓팅 (${sortedRounds.length}건)`}>
               <div className="space-y-3">
                 {sortedRounds.map((round) => {
@@ -537,6 +575,20 @@ if (concertData.tour_id) {
                   )
                 })}
               </div>
+            </Section>
+          )}
+
+          {concert.country === 'japan' && concert.source_url && (
+            <Section icon={Ticket} title="티켓 등 상세정보">
+              <a
+                href={concert.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-pink-50 dark:bg-pink-950/20 border border-pink-200 dark:border-pink-900 text-sm font-bold text-pink-600 dark:text-pink-400 hover:bg-pink-100 transition"
+              >
+                <ExternalLink className="w-4 h-4" />
+                공식 페이지에서 티켓 등 상세정보 확인하기
+              </a>
             </Section>
           )}
 

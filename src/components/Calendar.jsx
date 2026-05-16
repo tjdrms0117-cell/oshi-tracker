@@ -28,7 +28,11 @@ export default function Calendar({
 )
   }, [concerts, filter, attendingConcertIds])
   
-  const isMine = (concert) => attendingConcertIds.includes(concert.id)
+  const isMine = (concert) =>
+    attendingConcertIds.includes(concert.id) ||
+    (concert.is_series && concert.series_dates?.some(d => attendingConcertIds.includes(d.id))) ||
+    (concert.is_tour && concert.tour_concerts?.flatMap(tc => tc.series_dates || [{ id: tc.id }])
+      .some(d => attendingConcertIds.includes(d.id)))
   const isOshiArtist = (concert) => oshiArtistIds.includes(concert.artist_id)
   
   const firstDay = new Date(year, month, 1)
@@ -70,7 +74,8 @@ const myTourConcertIds = c.is_tour
   : null
 
 ;(c.ticket_rounds || []).forEach(round => {
-  // 투어 티켓팅 필터: 내가 attending한 concert_id만
+  // 원정 공연 티켓팅은 달력에 표시 안 함
+  if (c.country === 'japan') return
   if (filter === 'mine' && c.is_tour) {
   if (!myTourConcertIds || myTourConcertIds.length === 0) return
   // 내가 attending한 concert들의 series_id 수집
@@ -329,6 +334,14 @@ const myTourConcertIds = c.is_tour
                       {day}
                     </div>
                   )}
+                  {/* 오늘 + 공연 있을 때: 포스터 위에 D-DAY 뱃지 오버레이 */}
+                  {filter === 'mine' && isToday && events.live.length > 0 && events.live[0].poster_url && (
+                    <div className="absolute top-1 left-1 z-20">
+                      <div className="bg-pink-500 text-white text-[8px] font-black px-1 py-0.5 rounded shadow-md leading-none">
+                        D-DAY
+                      </div>
+                    </div>
+                  )}
                   
                   {filter === 'mine' && (hasEvents || events.festivals?.length > 0) && (
                     <div className="absolute inset-0 flex flex-col gap-0.5 overflow-hidden">
@@ -346,7 +359,6 @@ const myTourConcertIds = c.is_tour
                               {c.artist?.name}
                             </div>
                           )}
-                          
                         </div>
                       ))}
                       {events.festivals?.length > 0 && events.live.length === 0 && (

@@ -700,7 +700,7 @@ export async function fetchConcertsByArtist(artistId) {
       venue:venues(*),
       ticket_rounds(*)
     `)
-    .eq('artist_id', artistId)
+    .or(`artist_id.eq.${artistId},co_artist_id.eq.${artistId},co_artist_id_2.eq.${artistId},co_artist_id_3.eq.${artistId}`)
     .order('date', { ascending: true })
   
   if (error) throw error

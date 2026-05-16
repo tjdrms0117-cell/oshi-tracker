@@ -16,6 +16,18 @@ export default function VenueDetail({ session }) {
     loadData()
   }, [id])
 
+  // 스크롤 위치 복원
+  useEffect(() => {
+    const saved = sessionStorage.getItem(`venue_${id}_scroll`)
+    if (saved) {
+      setTimeout(() => window.scrollTo(0, parseInt(saved, 10)), 100)
+      sessionStorage.removeItem(`venue_${id}_scroll`)
+    }
+    return () => {
+      sessionStorage.setItem(`venue_${id}_scroll`, String(window.scrollY))
+    }
+  }, [id])
+
   const loadData = async () => {
     setLoading(true)
     try {

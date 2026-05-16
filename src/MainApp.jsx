@@ -43,6 +43,27 @@ export default function MainApp({ session, theme, onThemeChange }) {
   const [mode, setMode] = useState(() => localStorage.getItem('oshi_mode') || 'user')
   const [searchParams, setSearchParams] = useSearchParams()
 
+  // 스크롤 위치 복원
+  useEffect(() => {
+    const saved = sessionStorage.getItem('mainapp_scroll')
+    if (saved) {
+      const y = parseInt(saved, 10)
+      // 데이터 로드 후 복원되도록 약간 지연
+      setTimeout(() => window.scrollTo(0, y), 100)
+      sessionStorage.removeItem('mainapp_scroll')
+    }
+  }, [])
+
+  // 카드 클릭 시 현재 스크롤 위치 저장
+  useEffect(() => {
+    const saveScroll = () => sessionStorage.setItem('mainapp_scroll', String(window.scrollY))
+    window.addEventListener('beforeunload', saveScroll)
+    return () => {
+      saveScroll()
+      window.removeEventListener('beforeunload', saveScroll)
+    }
+  }, [])
+
   // 탭 + 국가를 URL searchParams로 관리 → 새로고침/뒤로가기 모두 유지
   const activeTab = VALID_TABS.includes(searchParams.get('tab'))
     ? searchParams.get('tab')

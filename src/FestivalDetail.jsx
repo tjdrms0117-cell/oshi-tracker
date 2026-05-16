@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, MapPin, Ticket, ExternalLink, Check, Clock, X } from 'lucide-react'
+import { ChevronLeft, MapPin, Ticket, ExternalLink, Check, Clock, X, Music } from 'lucide-react'
 import { fetchFestivalById, fetchMyFestivalPicks, toggleFestivalPick, fetchMyFestivalAttending, addToFestivalAttending, removeFromFestivalAttending } from './lib/api'
 import { getProfile } from './lib/auth'
 import { supabase } from './lib/supabase'
@@ -21,7 +21,9 @@ export default function FestivalDetail({ session }) {
   const [editForm, setEditForm] = useState({ start_time: '', end_time: '', stage: '' })
   const [saving, setSaving] = useState(false)
   const [isAttending, setIsAttending] = useState(false)
+  const [attendingDates, setAttendingDates] = useState([])
   const [attendingLoading, setAttendingLoading] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   useEffect(() => { loadFestival() }, [id])
 
@@ -30,7 +32,9 @@ export default function FestivalDetail({ session }) {
       getProfile(session.user.id).then(p => setIsAdmin(p?.is_admin === true)).catch(() => {})
       fetchMyFestivalPicks(session.user.id, id).then(setPicks).catch(() => {})
       fetchMyFestivalAttending(session.user.id).then(list => {
-        setIsAttending(list.some(a => a.festival_id === id))
+        const myDates = list.filter(a => a.festival_id === id).map(a => a.date)
+        setAttendingDates(myDates)
+        setIsAttending(myDates.length > 0)
       }).catch(() => {})
     }
   }, [session, id])
@@ -57,17 +61,28 @@ export default function FestivalDetail({ session }) {
     }
   }
 
-  const handleToggleAttending = async () => {
+  const handleToggleAttending = async (dateStr) => {
     if (!session?.user) { alert('로그인 후 이용할 수 있어요'); return }
     if (attendingLoading) return
+    // 다일 페스티벌인데 날짜 없이 호출된 경우 → 날짜 선택 모달로 위임
+    const isMultiDayFest = festival.end_date && festival.end_date !== festival.date
+    if (isMultiDayFest && !dateStr) {
+      setShowDatePicker(true)
+      return
+    }
+    const targetDate = dateStr || festival.date
+    if (!targetDate) { alert('공연 날짜 정보가 없어요'); return }
     setAttendingLoading(true)
     try {
-      if (isAttending) {
-        await removeFromFestivalAttending(session.user.id, id)
+      const alreadyGoing = attendingDates.includes(targetDate)
+      if (alreadyGoing) {
+        await removeFromFestivalAttending(session.user.id, id, targetDate)
+        setAttendingDates(prev => prev.filter(d => d !== targetDate))
       } else {
-        await addToFestivalAttending(session.user.id, id)
+        await addToFestivalAttending(session.user.id, id, targetDate)
+        setAttendingDates(prev => [...prev, targetDate])
       }
-      setIsAttending(!isAttending)
+      setIsAttending(attendingDates.filter(d => d !== targetDate).length > 0 || !alreadyGoing)
     } catch (err) {
       alert('오류: ' + err.message)
     } finally {
@@ -235,7 +250,14 @@ export default function FestivalDetail({ session }) {
               </a>
             )}
           <button
-              onClick={handleToggleAttending}
+              onClick={() => {
+                const isMultiDayFest = festival.end_date && festival.end_date !== festival.date
+                if (isMultiDayFest) {
+                  setShowDatePicker(true)
+                } else {
+                  handleToggleAttending(festival.date)
+                }
+              }}
               disabled={attendingLoading}
               className={`mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition ${
                 isAttending
@@ -244,10 +266,56 @@ export default function FestivalDetail({ session }) {
               }`}
             >
               <Check className="w-4 h-4" />
-              {isAttending ? '갈게요 등록됨' : '갈게요'}
+              {isAttending ? `${attendingDates.length}일 갈게요 ✓` : '갈게요'}
             </button>
           </div>
         </div>
+
+        {/* 날짜 선택 모달 (다일 페스티벌) */}
+        {showDatePicker && (() => {
+          const dates = []
+          if (festival.date && festival.end_date && festival.end_date !== festival.date) {
+            const cur = new Date(festival.date)
+            const end = new Date(festival.end_date)
+            while (cur <= end) {
+              dates.push(cur.toISOString().slice(0, 10))
+              cur.setDate(cur.getDate() + 1)
+            }
+          } else if (festival.date) {
+            dates.push(festival.date)
+          }
+          const DAY_NAMES = ['일','월','화','수','목','금','토']
+          return (
+            <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center backdrop-blur-sm"
+              onClick={() => setShowDatePicker(false)}>
+              <div className="bg-white dark:bg-zinc-900 rounded-t-2xl md:rounded-2xl w-full max-w-sm shadow-2xl p-4"
+                onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-bold text-sm text-zinc-900 dark:text-zinc-100">{festival.name}</div>
+                  <button onClick={() => setShowDatePicker(false)} className="p-1 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 text-zinc-500">✕</button>
+                </div>
+                <div className="text-xs text-zinc-500 mb-3">가는 날짜를 선택하세요</div>
+                <div className="space-y-2">
+                  {dates.map((d, idx) => {
+                    const dateObj = new Date(d)
+                    const label = `DAY${idx + 1} · ${dateObj.getMonth() + 1}/${dateObj.getDate()}(${DAY_NAMES[dateObj.getDay()]})`
+                    const going = attendingDates.includes(d)
+                    return (
+                      <button key={d}
+                        onClick={() => handleToggleAttending(d)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-bold transition ${
+                          going ? 'bg-emerald-500 text-white' : 'bg-stone-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-stone-200 dark:border-zinc-700'
+                        }`}>
+                        <span>{label}</span>
+                        <span>{going ? '✓ 갈게요' : '갈게요'}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* 티켓팅 */}
         {tickets.length > 0 && (
@@ -289,231 +357,125 @@ export default function FestivalDetail({ session }) {
           </div>
         )}
 
-        {/* 타임테이블 */}
-        <div className="bg-white dark:bg-zinc-900">
-          <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-            <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">타임테이블</div>
-            <div className="flex items-center gap-3">
-              {isAdmin && (
-                <div className="text-[11px] text-amber-500 font-bold">✏️ 블록 클릭 시 시간 편집</div>
-              )}
-              {picks.length > 0 && (
-                <div className="text-[11px] text-cyan-600 font-bold">✓ {picks.length}명 픽</div>
-              )}
+
+        {/* 타임테이블 이미지 (있을 때만 표시) */}
+        {festival.timetable_image_url && (
+          <div className="bg-white dark:bg-zinc-900">
+            <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+              <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">타임테이블</div>
+            </div>
+            <div className="px-5 pb-4">
+              <img src={festival.timetable_image_url} alt="타임테이블"
+                className="w-full rounded-xl border border-stone-200 dark:border-zinc-800" />
             </div>
           </div>
+        )}
 
-          {allArtists.length === 0 && cols[0] === 'tba' ? (
-            <div className="px-5 pb-8 text-center text-sm text-zinc-400 py-8">출연진 미정</div>
-          ) : (
-            <div className="overflow-x-auto px-2">
-              {/* 날짜 헤더 */}
-              {isMultiDay && (
-                <div className="flex border-b border-stone-200 dark:border-zinc-800">
-                  <div className="w-10 flex-shrink-0" />
-                  {cols.map((key, idx) => {
+        {/* 출연 아티스트 */}
+        {allArtists.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900">
+            <div className="px-5 pt-4 pb-2">
+              <div className="text-xs font-bold text-zinc-500 uppercase tracking-wider">출연 아티스트 ({allArtists.length})</div>
+            </div>
+            <div className="px-5 pb-4">
+              {isMultiDay ? (
+                <div className="space-y-4">
+                  {dateKeys.map((key, idx) => {
+                    if (key === 'tba') return null
                     const { day, date } = getDayLabel(key, idx)
+                    const dayArtists = allArtists.filter(fa => fa.performance_date === key)
+                    if (dayArtists.length === 0) return null
                     return (
-                      <div key={key} className="flex-1 py-2 text-center border-l border-stone-200 dark:border-zinc-800">
-                        <div className="text-xs font-black" style={{ color: '#0e7490' }}>{day}</div>
-                        <div className="text-[11px] text-zinc-500">{date}</div>
+                      <div key={key}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                            style={{ background: '#06b6d420', color: '#0e7490' }}>
+                            {day} · {date}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {dayArtists.map(fa => {
+                            const artist = fa.artist
+                            if (!artist) return null
+                            const isPicked = picks.includes(fa.artist_id)
+                            return (
+                              <button key={fa.id}
+                                onClick={() => handleArtistClick(fa)}
+                                className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 dark:border-zinc-700 hover:shadow-md hover:-translate-y-0.5 transition-all text-left bg-white dark:bg-zinc-900"
+                                style={{ borderLeftColor: artist.color || '#888', borderLeftWidth: 3 }}>
+                                {artist.youtube_thumbnail_url ? (
+                                  <img src={artist.youtube_thumbnail_url} alt={artist.name}
+                                    className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                                    style={{ background: `${artist.color || '#888'}20` }}>
+                                    <Music className="w-4 h-4" style={{ color: artist.color || '#888' }} />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-bold text-sm" style={{ color: artist.color || '#888' }}>
+                                    {artist.name}
+                                  </div>
+                                  {artist.name_jp && <div className="text-xs text-zinc-500 truncate">{artist.name_jp}</div>}
+                                </div>
+                                {!isAdmin && (
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleTogglePick(fa.artist_id) }}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                    style={{ background: isPicked ? (artist.color || '#06b6d4') : 'rgba(0,0,0,0.08)' }}>
+                                    <Check className="w-3 h-3" style={{ color: isPicked ? 'white' : '#aaa' }} strokeWidth={3} />
+                                  </button>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
                   })}
                 </div>
-              )}
-
-              {/* 타임테이블 공개 전 */}
-              {(() => {
-                const untimedAll = allArtists.filter(fa => !fa.start_time)
-                if (untimedAll.length === 0) return null
-                return (
-                  <div className="mb-2 border-b border-dashed border-stone-200 dark:border-zinc-700 pb-2">
-                    <div className="flex items-center gap-2 px-1 py-1.5">
-                      <Clock className="w-3 h-3 text-zinc-400" />
-                      <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">타임테이블 공개 전</span>
-                    </div>
-                    <div className="flex">
-                      <div className="w-10 flex-shrink-0" />
-                      {cols.map(key => {
-                        const untimedInCol = key === 'tba'
-                          ? tbaArtists.filter(fa => !fa.start_time)
-                          : allArtists.filter(fa => fa.performance_date === key && !fa.start_time)
-                        return (
-                          <div key={key} className="flex-1 border-l border-stone-200 dark:border-zinc-800 p-1 space-y-1">
-                            {untimedInCol.map(fa => {
-                              const artist = fa.artist
-                              if (!artist) return null
-                              const isPicked = picks.includes(fa.artist_id)
-                              return (
-                                <div key={fa.id || fa.artist_id}
-                                  className="rounded-lg p-1.5 transition hover:brightness-95 relative cursor-pointer"
-                                  style={{
-                                    background: isPicked ? `${artist.color || '#888'}35` : `${artist.color || '#888'}18`,
-                                    border: `1.5px solid ${artist.color || '#888'}50`,
-                                  }}
-                                  onClick={() => handleArtistClick(fa)}>
-                                  <div className="text-xs font-black truncate pr-4"
-                                    style={{ color: artist.color || '#888' }}>
-                                    {artist.name}
-                                    {artist.name_jp && (
-                                      <span className="font-normal opacity-70 ml-1 text-[10px]">{artist.name_jp}</span>
-                                    )}
-                                  </div>
-                                  {!isAdmin && (
-                                    <button
-                                      onClick={e => { e.stopPropagation(); handleTogglePick(fa.artist_id) }}
-                                      className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center"
-                                      style={{ background: isPicked ? (artist.color || '#06b6d4') : 'rgba(0,0,0,0.1)' }}>
-                                      <Check className="w-2.5 h-2.5" style={{ color: isPicked ? 'white' : '#aaa' }} />
-                                    </button>
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* 그리드 */}
-              <div className="flex">
-                {/* 시간 축 */}
-                <div className="w-10 flex-shrink-0 relative" style={{ height: totalHeight }}>
-                  {timeLabels.map((label, i) => (
-                    <div key={i} className="absolute right-1 text-[9px] text-zinc-400 font-mono leading-none"
-                      style={{ top: i * SLOT_HEIGHT - 5 }}>
-                      {label}
-                    </div>
-                  ))}
-                </div>
-
-                {/* 날짜별 열 */}
-                {cols.map((key) => {
-                    const colArtists = key === 'tba'
-                      ? tbaArtists.filter(fa => fa.start_time)
-                      : allArtists.filter(fa => fa.performance_date === key && fa.start_time)
-
-                    // 레인 분리 알고리즘
-                    const lanes = []
-                    const artistLanes = {}
-                    // 시간순 정렬 후 레인 분리
-                    const sortedCol = [...colArtists].sort((a, b) =>
-                      (a.start_time || '').localeCompare(b.start_time || '')
-                    )
-                    sortedCol.forEach(fa => {
-                      const startH = fa.start_time ? timeToY(fa.start_time) : 0
-                      const endH = fa.end_time ? timeToY(fa.end_time) : startH + SLOT_HEIGHT * 0.8
-                      let placed = false
-                      for (let li = 0; li < lanes.length; li++) {
-                        if (startH >= lanes[li] - 2) { // 2px 여유
-                          lanes[li] = endH
-                          artistLanes[fa.artist_id] = { lane: li, total: null }
-                          placed = true
-                          break
-                        }
-                      }
-                      if (!placed) {
-                        artistLanes[fa.artist_id] = { lane: lanes.length, total: null }
-                        lanes.push(endH)
-                      }
-                    })
-                    const totalLanes = lanes.length || 1
-                    Object.keys(artistLanes).forEach(k => { artistLanes[k].total = totalLanes })
-
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {allArtists.map(fa => {
+                    const artist = fa.artist
+                    if (!artist) return null
+                    const isPicked = picks.includes(fa.artist_id)
                     return (
-                      <div key={key}
-                        className="flex-1 border-l border-stone-200 dark:border-zinc-800 relative"
-                        style={{ height: totalHeight }}>
-                      {/* 가이드 선 */}
-                      {timeLabels.map((_, i) => (
-                        <div key={i} className="absolute left-0 right-0 border-t border-stone-100 dark:border-zinc-800/50"
-                          style={{ top: i * SLOT_HEIGHT }} />
-                      ))}
-
-                      {/* 아티스트 블록 */}
-                      {colArtists.map(fa => {
-                        const artist = fa.artist
-                        if (!artist) return null
-                        const topY = timeToY(fa.start_time)
-                        if (topY === null || topY < 0) return null
-                        const endY = fa.end_time ? timeToY(fa.end_time) : topY + SLOT_HEIGHT * 0.8
-                        const height = Math.max(endY - topY, 32)
-                        const isPicked = picks.includes(fa.artist_id)
-
-                        const laneInfo = artistLanes[fa.artist_id] || { lane: 0, total: 1 }
-                          const laneW = 100 / laneInfo.total
-                          const laneL = laneW * laneInfo.lane
-
-                          return (
-                            <div key={fa.id || fa.artist_id}
-                              className="absolute rounded-lg overflow-hidden transition hover:brightness-95"
-                              style={{
-                                top: topY + 1,
-                                height: height - 2,
-                                left: `calc(${laneL}% + 2px)`,
-                                width: `calc(${laneW}% - 4px)`,
-                                cursor: 'pointer',
-                              }}
-                            onClick={() => handleArtistClick(fa)}
-                          >
-                            <div className="h-full flex flex-col p-1.5 relative justify-start"
-                              style={{
-                                background: isPicked ? `${artist.color || '#888'}40` : `${artist.color || '#888'}20`,
-                                border: `1.5px solid ${artist.color || '#888'}${isPicked ? 'cc' : '60'}`,
-                                borderRadius: '8px',
-                              }}>
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-xs font-black leading-tight truncate"
-                                    style={{ color: artist.color || '#888' }}>
-                                    {artist.name}
-                                    {artist.name_jp && (
-                                      <span className="font-normal opacity-70 ml-1">{artist.name_jp}</span>
-                                    )}
-                                  </div>
-                                  {height > 44 && (
-                                    <div className="text-[11px] text-zinc-500 font-mono font-bold">
-                                      {fa.start_time?.slice(0, 5)}{fa.end_time && ` ~ ${fa.end_time.slice(0, 5)}`}
-                                    </div>
-                                  )}
-                                </div>
-                                {fa.stage && (
-                                  <div className="flex-shrink-0 pl-2 ml-auto"
-                                    style={{ borderLeft: `1.5px solid ${artist.color || '#888'}50` }}>
-                                    <span className="text-[10px] font-bold whitespace-nowrap"
-                                      style={{ color: artist.color || '#888', opacity: 0.8 }}>
-                                      {fa.stage}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              {/* 픽 버튼 (유저만) */}
-                              {!isAdmin && (
-                                <button
-                                  onClick={e => { e.stopPropagation(); handleTogglePick(fa.artist_id) }}
-                                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full flex items-center justify-center"
-                                  style={{ background: isPicked ? (artist.color || '#06b6d4') : 'rgba(0,0,0,0.15)' }}>
-                                  <Check className="w-2.5 h-2.5" style={{ color: isPicked ? 'white' : '#aaa' }} />
-                                </button>
-                              )}
-                            </div>
+                      <button key={fa.id}
+                        onClick={() => handleArtistClick(fa)}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-stone-200 dark:border-zinc-700 hover:shadow-md hover:-translate-y-0.5 transition-all text-left bg-white dark:bg-zinc-900"
+                        style={{ borderLeftColor: artist.color || '#888', borderLeftWidth: 3 }}>
+                        {artist.youtube_thumbnail_url ? (
+                          <img src={artist.youtube_thumbnail_url} alt={artist.name}
+                            className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: `${artist.color || '#888'}20` }}>
+                            <Music className="w-4 h-4" style={{ color: artist.color || '#888' }} />
                           </div>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-              </div>
-
-              
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm" style={{ color: artist.color || '#888' }}>
+                            {artist.name}
+                          </div>
+                          {artist.name_jp && <div className="text-xs text-zinc-500 truncate">{artist.name_jp}</div>}
+                        </div>
+                        {!isAdmin && (
+                          <button
+                            onClick={e => { e.stopPropagation(); handleTogglePick(fa.artist_id) }}
+                            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ background: isPicked ? (artist.color || '#06b6d4') : 'rgba(0,0,0,0.08)' }}>
+                            <Check className="w-3 h-3" style={{ color: isPicked ? 'white' : '#aaa' }} strokeWidth={3} />
+                          </button>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          )}
-          <div className="h-4" />
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 시간 편집 모달 (관리자) */}
